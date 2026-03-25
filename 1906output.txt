@@ -1,0 +1,109 @@
+Starting evaluation pipeline...
+Uploading sample_startup_deck.pdf to Gemini...
+File uploaded successfully: files/8rpbz70evupx
+Evaluating deck...
+
+========================================
+COMPANY: 1906
+FUNDABILITY SCORE: 83.0 / 100
+========================================
+
+Team Score: 10/10
+Team Feedback: Your team is truly world-class. The founders and key personnel bring a highly relevant and impressive array of experience in finance, manufacturing, policy, marketing, sales, and scientific formulation within the cannabis and related industries. The specific achievements and past roles of each member demonstrate a strong capability to execute on your vision.
+
+
+
+============================================================
+--- DETAILED FEEDBACK FOR: 1906 ---
+============================================================
+
+1. Problem Statement
+  Score:    9/10
+  Feedback: You've done an excellent job articulating the problem. You clearly highlight the shortcomings of traditional cannabis consumption (smoking) and existing edibles, and effectively identify a significant unmet need for functional, discreet, and health-focused cannabis products. The supporting data from the Harris Poll and consumer quotes strongly validate your problem statement.
+  Evidence: "CANNABIS AND SMOKING ARE ON A COLLISION COURSE (Slide 3); EDIBLES ARE THE FUTURE (Slide 4); 75% OF PEOPLE ARE INTERESTED IN CANNABIS AS MEDICINE (Slide 8); 'HEALTH' TRUMPS HIGH (Slide 29)"
+--------------------------------------------------
+2. Solution & Value Prop
+  Score:    9/10
+  Feedback: Your solution is exceptionally well-defined and directly addresses the problems you've identified. The emphasis on functional, fast-acting, great-tasting, discreet, and targeted cannabis products, along with the unique integration of other plant medicines, creates a strong unique selling proposition. The variety of product forms (confections, tablets, beverages) also shows a comprehensive approach.
+  Evidence: "Our company is pioneering ways to deliver NON-SMOKABLE controlled doses of cannabis and plant medicines in safe, discreet and user-friendly formats that enable cannabis to become a wellness tool and a performance-enhancing 'supplement.' (Slide 5); 1906 EXPERIENCES TO ENHANCE AND OPTIMIZE YOUR DAY AND NIGHT (Slide 9); WE ARE THE ONLY COMPANY TO INCORPORATE OTHER PLANT MEDICINES AND SUPPLEMENTS IN OUR EXPERIENCE-FOCUSED FORMULATIONS. (Slide 10); A MASSIVELY DIFFERENTIATED OFFERING (Slide 16)"
+--------------------------------------------------
+3. Market Size (TAM)
+  Score:    7/10
+  Feedback: You provide a good overview of the overall legal cannabis market size and its impressive growth trajectory. Identifying the target segment of health and wellness-focused consumers is also strong. However, while you show state-level market estimates, a clearer breakdown of the Total Addressable Market (TAM), Serviceable Available Market (SAM), and Serviceable Obtainable Market (SOM) specifically for the 'functional cannabis' niche would strengthen this section further.
+  Evidence: "The cannabis market is experiencing 42% year over year growth and is expected to grow to $50 billion. (Slide 27); U.S. Legal Cannabis Revenue Projections: $22.6B (2021) (Slide 27); MARKET SIZE ESTIMATES [2020] (Slide 15); 54% DO NOT CURRENTLY USE CANNABIS, 63% ARE INTERESTED IN EDIBLES (Slide 7)"
+--------------------------------------------------
+4. Product & Technology
+  Score:    9/10
+  Feedback: This section is a major strength. You clearly articulate your product's differentiation through patented lipid microencapsulation technology for rapid onset, novel chocolate-making techniques for superior taste, and the unique incorporation of other plant medicines. The detailed breakdown of product lines and their targeted effects demonstrates a sophisticated approach to product development.
+  Evidence: "Patented lipid microencapsulation technology delivers onset time of 20 minutes or less. (Slide 11); WE ARE THE ONLY COMPANY TO INCORPORATE OTHER PLANT MEDICINES AND SUPPLEMENTS IN OUR EXPERIENCE-FOCUSED FORMULATIONS. (Slide 10); A MASSIVELY DIFFERENTIATED OFFERING (Slide 16)"
+--------------------------------------------------
+5. Business Model
+  Score:    8/10
+  Feedback: Your business model is clear, showing revenue generation from your own branded products across various states and a significant additional stream from contract manufacturing for other brands. The mention of building manufacturing facilities and pursuing vertically integrated licenses indicates a robust operational strategy. The revenue breakdown by brand and state in the financials further clarifies your model.
+  Evidence: "We are currently building manufacturing facilities in Illinois, Massachusetts and Michigan with our strategic partner, Ascend. We are pursuing a vertically integrated license in New Jersey (Slide 15); OTHER BRANDS ARE TAPPING INTO OUR SKILLS FOR CONTRACT MANUFACTURING (Slide 21); 2020 SOURCES OF REVENUE by Brand (90% 1906, 10% Beboe) and by State (Slide 31)"
+--------------------------------------------------
+6. Go-To-Market Strategy
+  Score:    9/10
+  Feedback: Your go-to-market strategy is well-thought-out and detailed. You've identified specific target demographics and outlined a clear, disciplined state-by-state expansion plan with a concrete timeline. The multi-pronged marketing approach, including budtender engagement, PR, social media, and experiences, is comprehensive and leverages your brand's unique positioning.
+  Evidence: "FUTURE CONSUMERS ARE AT OUR DOOR (Slide 7); WE ARE DISCIPLINED AND FOCUSED ABOUT HOW WE GROW (Slide 15); DISRUPTION IS EVERYTHING (Slide 18); MORE ACCESS FOR MORE PEOPLE VIA A DISCIPLINED ROLLOUT OVER THE NEXT 18 MONTHS (Slide 22)"
+--------------------------------------------------
+7. Competition
+  Score:    8/10
+  Feedback: You've directly addressed the competition with a clear comparison table, effectively highlighting your product's superior attributes across key metrics like fast-acting, targeted effects, and taste. Emphasizing your unique use of plant medicines further strengthens your competitive differentiation. This provides investors with a good understanding of your market position.
+  Evidence: "WINNING THE CATEGORY (Slide 11) - comparison table with CODA, DIXIE, KIVA, INCREDIBLES; WE ARE THE ONLY COMPANY TO INCORPORATE OTHER PLANT MEDICINES AND SUPPLEMENTS IN OUR EXPERIENCE-FOCUSED FORMULATIONS. (Slide 10)"
+--------------------------------------------------
+8. Team
+  Score:    10/10
+  Feedback: Your team is truly world-class. The founders and key personnel bring a highly relevant and impressive array of experience in finance, manufacturing, policy, marketing, sales, and scientific formulation within the cannabis and related industries. The specific achievements and past roles of each member demonstrate a strong capability to execute on your vision.
+  Evidence: "A WORLD-CLASS TEAM OF VISIONARIES (Slide 23); Peter Barsoom (CEO & Co-founder): Extensive career in finance and business strategy (American Express, Merrill Lynch, Morgan Stanley, BlueMountain Capital). (Slide 23); Erin Holzer (Operations & Manufacturing): 11+ years manufacturing chocolate; former Chief Chocolate Maker & Head Engineer at Theo Chocolate. (Slide 23); Justin Kirkland (Science & Technology (Consulting)): Formulated and patented the first water-soluble certified CBD organic delivery system. (Slide 24)"
+--------------------------------------------------
+9. Traction
+  Score:    9/10
+  Feedback: You present compelling traction data, including cumulative units sold, strong year-over-year revenue growth percentages, and sales per store. The historical financial figures in your forecasts further solidify your market acceptance and growth. This provides clear evidence that your product is gaining significant momentum.
+  Evidence: "PHENOMENAL GROWTH EVERY QUARTER (Slide 14) - Units Sold (cumulative since inception) >500K, Revenue Growth - 2018 vs. 2019 (29%, 55%, 63%), Sales Per Store (Per Quarter in 2019) 23% growth; FINANCIAL FORECASTS ($ MILLIONS) - Total Revenue: $0.57 (2017), $1.93 (2018), $3.52 (2019) (Slide 20)"
+--------------------------------------------------
+10. The Ask & Financials
+  Score:    3/10
+  Feedback: While your financial forecasts are detailed and include historical data, projections, gross margins, and EBITDA, the complete absence of 'The Ask' is a critical oversight for a pitch deck. Investors need to know precisely how much capital you are seeking, what valuation you are proposing, and how you intend to utilize the funds. Without this fundamental information, the deck is incomplete for its primary purpose.
+  Evidence: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20) - includes Total Revenue, COGS, Gross Margin, Total Expenses, EBITDA for 2017-2021."
+--------------------------------------------------
+
+============================================================
+EXTRACTED INDUSTRY KPIs
+============================================================
+  • Units Sold (cumulative since inception): >500K
+    (Provenance: "Units Sold (cumulative since inception) (Slide 14)")
+  • Revenue Growth Q1 2018 vs 2019: 29%
+    (Provenance: "Revenue Growth - 2018 vs. 2019 (Slide 14)")
+  • Revenue Growth Q2 2018 vs 2019: 55%
+    (Provenance: "Revenue Growth - 2018 vs. 2019 (Slide 14)")
+  • Revenue Growth Q3 2018 vs 2019: 63%
+    (Provenance: "Revenue Growth - 2018 vs. 2019 (Slide 14)")
+  • Sales Per Store Growth Q1 vs Q2 2019: 23%
+    (Provenance: "Sales Per Store (Per Quarter in 2019) (Slide 14)")
+  • Total Revenue 2017: $0.57M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Total Revenue 2018: $1.93M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Total Revenue 2019: $3.52M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Gross Margin 2019: 49%
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Gross Margin 2020 (Base Case): 57%
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Gross Margin 2021 (Stretch Case): 58%
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • EBITDA 2019: $(7.02)M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • EBITDA 2020 (Base Case): $(3.06)M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • EBITDA 2021 (Stretch Case): $20.38M
+    (Provenance: "FINANCIAL FORECASTS ($ MILLIONS) (Slide 20)")
+  • Onset time: 20 minutes or less
+    (Provenance: "Patented lipid microencapsulation technology delivers onset time of 20 minutes or less. (Slide 11)")
+
+============================================================
+DETECTED RED FLAGS
+============================================================
+  [X] The complete absence of 'The Ask' (amount of funding sought, valuation, use of funds) is a critical omission for a pitch deck, making it uninvestable as-is.
+  [X] The revenue projections show a very aggressive jump from $3.52M in 2019 to $15.27M (base case) or $20.66M (stretch case) in 2020, and then to $52.75M (stretch case) in 2021. While the market is growing, such rapid scaling requires strong justification and detailed use of funds, which is missing.
