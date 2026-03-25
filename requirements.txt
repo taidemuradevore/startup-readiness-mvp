@@ -1,0 +1,14 @@
+# VC Hunter MVP - requirements.txt
+
+# Google Gemini API client
+google-genai
+
+# PDF parsing and text extraction (imported as fitz)
+PyMuPDF
+
+# Data validation and strict JSON schema enforcement
+pydantic
+
+jupyter
+ipykernel
+dotenv
