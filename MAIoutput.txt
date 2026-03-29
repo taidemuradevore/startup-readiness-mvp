@@ -1,0 +1,71 @@
+============================================================
+--- DETAILED FEEDBACK FOR: MAI ---
+============================================================
+
+1. Problem Statement
+  Score:    8/10
+  Feedback: The problem is clearly articulated with three distinct points, making it easy to understand the pain points marketers face. The visual aid on slide 3 effectively reinforces the idea of fragmentation. To make it even stronger, consider adding a specific anecdote or statistic about the scale of these problems (e.g., 'marketers spend X% of their time on manual coordination').
+  Evidence: "Human marketers coordinate a complex web of siloed MarTech and AdTech tools with overlapping capabilities and inconsistent workflows. Manual coordination is slow, expensive and error-prone. Data fragmentation hamstrings performance."
+--------------------------------------------------
+2. Solution & Value Prop
+  Score:    8/10
+  Feedback: The solution is presented clearly as an 'end-to-end AI marketing agent' and the diagram on slide 4 effectively illustrates how MAI integrates and streamlines the workflow. The description of MAI's capabilities (understand data, propose/execute plans, perform tasks, unified interface) is good. To improve, you could briefly touch on how it achieves this end-to-end capability beyond just stating it, perhaps hinting at the underlying tech's ability to connect disparate systems.
+  Evidence: "The world's first end-to-end AI marketing agent. MAI understand your data and you business. MAI proposes and executes media plans. MAI performs tasks. MAI provides a unified and more intuitive interface."
+--------------------------------------------------
+3. Market Size (TAM)
+  Score:    3/10
+  Feedback: You mention 'big TAM' on slide 6, which is a good start, but it's dangerously vague. Investors need to see concrete numbers for your Total Addressable Market (TAM), Serviceable Available Market (SAM), and Serviceable Obtainable Market (SOM). How large is the performance marketing on Google market? What's the growth rate? Without these figures, it's impossible to assess the true scale of the opportunity.
+  Evidence: "Very large marketing spend with complex workflows. Gives us a big TAM and fit."
+--------------------------------------------------
+4. Product & Technology
+  Score:    9/10
+  Feedback: The technology moat is well-defined, emphasizing your proprietary end-to-end AI system over mere LLM wrappers. The layered architecture (Data, Signal, Strategy, Execution) provides a clear and sophisticated view of your technical approach. The product philosophy of simplicity, control, and transparency is also a strong selling point. The visuals of the product interface are helpful. This is a very strong section.
+  Evidence: "While LLM-wrappers are trendy among AI Agent startups, they fall short for growth marketing that requires deep expertise in data analytics, ad tech, and an RL machinery that constantly learns and improves. That's why we're building our own proprietary end-to-end AI system."
+--------------------------------------------------
+5. Business Model
+  [!] MISSING: This section was not found in the deck.
+--------------------------------------------------
+6. Go-To-Market Strategy
+  Score:    5/10
+  Feedback: You've identified your initial wedge as 'Performance Marketing on Google,' which is a good, focused start. However, the deck lacks a detailed go-to-market strategy. How will you acquire your first 10, 100, or 1000 customers? What channels will you use? What's your sales motion? How do you plan to expand beyond Google Ads or your initial customer base? The current strategy is too high-level.
+  Evidence: "Wedge: Performance Marketing on Google. Very large marketing spend with complex workflows. Gives us a big TAM and fit. Our team are experts on Google Ads. We are uniquely positioned to solve it."
+--------------------------------------------------
+7. Competition
+  [!] MISSING: This section was not found in the deck.
+--------------------------------------------------
+8. Team
+  Score:    10/10
+  Feedback: This is an exceptionally strong team. The founders and key hires bring deep, relevant experience from top-tier companies like Instacart, Google Ads, and Shopify, coupled with strong academic backgrounds (multiple PhDs). This level of expertise in AI, engineering, and product in the ad-tech space is highly impressive and a major asset for the company.
+  Evidence: "Yuchen CEO Previously VP of Engineering at Instacart, Principal Engineer at Google Ads Ph.D in Machine Learning from Northwestern... Jian CTO Previously Sr Director of Engineering at Instacart, Senior Staff Engineer at Google Ads Ph.D in Machine Learning from UC Santa Cruz... Fabien Head of Product Previously Director of Product at Instacart and Product Lead at Shopify"
+--------------------------------------------------
+9. Traction
+  Score:    9/10
+  Feedback: The three detailed testimonials with clear results (3x profitable spend, 118% ROAS, 32% sales increase, 2x profitable spend) are very compelling and provide strong evidence of your product's impact. The specific numbers and customer quotes add significant credibility. To make it a perfect 10, consider adding a slide that aggregates these results or shows a growth trend across multiple customers, perhaps with a chart.
+  Evidence: "MAI increased profitable spend by 3x in 90 days. (Slide 7), MAI increased ROAS by 118% and sales by 32%. (Slide 8), MAI delivered a 2x increase in profitable spend for the Australian market. (Slide 9)"
+--------------------------------------------------
+10. The Ask & Financials
+  [!] MISSING: This section was not found in the deck.
+--------------------------------------------------
+
+============================================================
+EXTRACTED INDUSTRY KPIs
+============================================================
+  • profitable spend increase: 3x in 90 days
+    (Provenance: "MAI increased profitable spend by 3x in 90 days.")
+  • ROAS increase: 118%
+    (Provenance: "MAI increased ROAS by 118% and sales by 32%.")
+  • sales increase: 32%
+    (Provenance: "MAI increased ROAS by 118% and sales by 32%.")
+  • profitable spend increase: 2x
+    (Provenance: "MAI delivered a 2x increase in profitable spend for the Australian market.")
+  • Conversion value: 425,750.36 (Last 7 days)
+    (Provenance: "Report Conversion value 425,750.36 Last 7 days")
+
+============================================================
+DETECTED RED FLAGS
+============================================================
+  [X] Missing detailed market size numbers and breakdown (TAM, SAM, SOM).
+  [X] No business model articulated (how revenue is generated).
+  [X] Go-to-market strategy is too high-level, lacking specific acquisition and expansion plans.
+  [X] No competition analysis, which is a significant omission for a startup pitch.
+  [X] The 'Ask' (amount raising, use of proceeds) and financial projections (revenue, expenses, burn, runway) are completely missing, which are critical for a seed raise.
