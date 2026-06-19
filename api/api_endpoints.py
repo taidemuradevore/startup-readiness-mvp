@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field
 from google.genai import errors as genai_errors
 import uvicorn
 
-from auth import AuthenticatedUser, get_current_user
-from llm_parser import Deck, DeckParser, PitchDeckEvaluation
-from supabase_storage import SupabaseStorageClient, SupabaseStorageError
-from upload_to_sql import SQLDatabase
+from .auth import AuthenticatedUser, get_current_user
+from .llm_parser import Deck, DeckParser, PitchDeckEvaluation
+from .supabase_storage import SupabaseStorageClient, SupabaseStorageError
+from .upload_to_sql import SQLDatabase
 
 
 class JsonDeckRequest(BaseModel):

@@ -7,7 +7,7 @@ import unittest
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from llm_parser import Deck, DeckSlide, PitchDeckEvaluation
+from .llm_parser import Deck, DeckSlide, PitchDeckEvaluation
 
 load_dotenv()
 
