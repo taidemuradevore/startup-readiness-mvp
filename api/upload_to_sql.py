@@ -441,7 +441,7 @@ class SQLDatabase():
                 '''
                 SELECT deck_id, company_name, sector, stage, team, storage_object_path
                 FROM DECK
-                WHERE owner_id = global
+                WHERE owner_id IS NULL
                 ORDER BY company_name ASC
                 ''',
             )
