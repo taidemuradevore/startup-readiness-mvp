@@ -12,3 +12,7 @@ pydantic
 jupyter
 ipykernel
 dotenv
+fastapi
+uvicorn
+python-multipart
+supabase

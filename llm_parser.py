@@ -1,3 +1,5 @@
+import unittest
+
 from google import genai
 import json
 import os
@@ -145,8 +147,11 @@ class DeckParser:
         # Upload the file securely to Google's servers for processing
         uploaded_file = self.client.files.upload(file=pdf_path)
         print(f"File uploaded successfully: {uploaded_file.name}")
-        
-        prompt = """
+
+        return self._evaluate_uploaded_file(uploaded_file)
+
+    def _evaluation_prompt(self) -> str:
+        return """
         You are an expert Venture Capital evaluator and a strict grader. 
         You are evaluating a startup pitch deck submitted as a final assignment. 
         Your task is to grade the deck based on the 'Core 10' startup principles.
@@ -306,6 +311,9 @@ class DeckParser:
 
         Do not grade them on information that is not in the deck. If they forgot their Business Model, fail that section.
         """
+
+    def _evaluate_uploaded_file(self, uploaded_file) -> PitchDeckEvaluation:
+        prompt = self._evaluation_prompt()
 
         print("Evaluating deck...")
         
@@ -504,3 +512,13 @@ class DeckParser:
                 print(f"  [X] {flag}")
         else:
             print("  None detected. Looking good!")
+
+
+class TestEval(unittest.TestCase):
+    def testeval(self):
+       parser = DeckParser()
+       eval = parser.evaluate_pitch_deck("sample_startup_deck.pdf")
+       parser.print_detailed_feedback(eval)
+       
+if __name__ == "__main__":
+    unittest.main()
