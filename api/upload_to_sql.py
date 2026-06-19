@@ -436,6 +436,16 @@ class SQLDatabase():
             (owner_id,),
         )
         rows = cur.fetchall()
+        if not rows:
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE owner_id = global
+                ORDER BY company_name ASC
+                ''',
+            )
+        rows = cur.fetchall()
 
         def _parse_json_list(value, default):
             if value is None:
