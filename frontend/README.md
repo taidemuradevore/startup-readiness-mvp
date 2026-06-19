@@ -30,10 +30,11 @@ npm run dev
 
 The home page includes forms for:
 
-- `POST /decks/from-json`
-- `POST /decks/ingest-from-json`
-- `POST /decks/retrieve`
-- `POST /decks/evaluate`
+- `POST /api/decks/from-json`
+- `POST /api/decks/ingest-from-json`
+- `POST /api/decks/retrieve`
+- `POST /api/decks/evaluate`
+- `POST /api/decks/evaluate-upload`
 
 The deck detail page fetches slides from:
 

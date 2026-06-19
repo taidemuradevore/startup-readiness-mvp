@@ -79,7 +79,7 @@ def _evaluate_and_ingest(pdf_path: str, eval_flag: bool, owner_id: str) -> Pitch
     db.ingest_deck(conn, deck, eval_included=True, owner_id=owner_id)
     return deck
 
-@app.get("/health")
+@app.get("/api/health")
 def return_health():
     return {"status" : "healthy"}
 
@@ -155,7 +155,7 @@ def delete_deck_endpoint(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-@app.post("/decks/from-json", response_model=Deck)
+@app.post("/api/decks/from-json", response_model=Deck)
 def load_deck_from_json_endpoint(
     request: JsonDeckRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -165,7 +165,7 @@ def load_deck_from_json_endpoint(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     
-@app.post("/decks/retrieve", response_model=Deck)
+@app.post("/api/decks/retrieve", response_model=Deck)
 def load_deck_from_sql_endpoint(
     request: SQLDeckRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -176,7 +176,7 @@ def load_deck_from_sql_endpoint(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     
-@app.post("/decks/evaluate", response_model=PitchDeckEvaluation)
+@app.post("/api/decks/evaluate", response_model=PitchDeckEvaluation)
 def evaluate_deck_endpoint(
     request: EvalDeckRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -194,7 +194,7 @@ def evaluate_deck_endpoint(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.post("/decks/evaluate-upload", response_model=PitchDeckEvaluation)
+@app.post("/api/decks/evaluate-upload", response_model=PitchDeckEvaluation)
 async def evaluate_deck_upload_endpoint(
     file: UploadFile = File(...),
     eval: bool = Form(True),
@@ -243,7 +243,7 @@ async def evaluate_deck_upload_endpoint(
     finally:
         await file.close()
 
-@app.post("/decks/ingest-from-json")
+@app.post("/api/decks/ingest-from-json")
 def ingest_deck_from_json_endpoint(
     request: IngestDeckRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),

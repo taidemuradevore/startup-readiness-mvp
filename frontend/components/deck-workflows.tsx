@@ -92,7 +92,7 @@ export function DeckWorkflows() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <WorkflowCard title="Upload / Load JSON Deck" description="Call /decks/from-json and inspect the parsed deck metadata and slides.">
+      <WorkflowCard title="Upload / Load JSON Deck" description="Call /api/decks/from-json and inspect the parsed deck metadata and slides.">
         <form
           action={(formData) => {
             startLoad(() => void handleJsonAction(formData, setLoadState, loadDeckFromJson));
@@ -117,7 +117,7 @@ export function DeckWorkflows() {
         </div>
       </WorkflowCard>
 
-      <WorkflowCard title="Ingest Deck Into Database" description="Call /decks/ingest-from-json and capture the returned deck_id.">
+      <WorkflowCard title="Ingest Deck Into Database" description="Call /api/decks/ingest-from-json and capture the returned deck_id.">
         <form
           action={(formData) => {
             startIngest(() => void handleJsonAction(formData, setIngestState, ingestDeckFromJson));
@@ -142,7 +142,7 @@ export function DeckWorkflows() {
         </div>
       </WorkflowCard>
 
-      <WorkflowCard title="Retrieve Deck" description="Call /decks/retrieve with a deck_id and show the deck plus slides.">
+      <WorkflowCard title="Retrieve Deck" description="Call /api/decks/retrieve with a deck_id and show the deck plus slides.">
         <form
           action={(formData) => {
             startRetrieve(async () => {

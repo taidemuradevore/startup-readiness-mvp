@@ -269,28 +269,28 @@ export async function deleteDeck(deckId: string): Promise<{ status: string; deck
 }
 
 export async function retrieveDeck(deckId: string): Promise<Deck> {
-  return request<Deck>("/decks/retrieve", {
+  return request<Deck>("/api/decks/retrieve", {
     method: "POST",
     body: JSON.stringify({ deck_id: deckId }),
   });
 }
 
 export async function loadDeckFromJson(jsonPath: string): Promise<Deck> {
-  return request<Deck>("/decks/from-json", {
+  return request<Deck>("/api/decks/from-json", {
     method: "POST",
     body: JSON.stringify({ json_path: jsonPath }),
   });
 }
 
 export async function ingestDeckFromJson(jsonPath: string): Promise<{ status: string; deck_id: string; company: string }> {
-  return request<{ status: string; deck_id: string; company: string }>("/decks/ingest-from-json", {
+  return request<{ status: string; deck_id: string; company: string }>("/api/decks/ingest-from-json", {
     method: "POST",
     body: JSON.stringify({ json_path: jsonPath }),
   });
 }
 
 export async function evaluateDeck(pdfPath: string, evalFlag: boolean): Promise<DeckEvaluation> {
-  return request<DeckEvaluation>("/decks/evaluate", {
+  return request<DeckEvaluation>("/api/decks/evaluate", {
     method: "POST",
     body: JSON.stringify({ pdf_path: pdfPath, eval: evalFlag }),
   });
@@ -301,7 +301,7 @@ export async function evaluateDeckUpload(file: File, evalFlag: boolean): Promise
   formData.append("file", file);
   formData.append("eval", String(evalFlag));
 
-  return request<DeckEvaluation>("/decks/evaluate-upload", {
+  return request<DeckEvaluation>("/api/decks/evaluate-upload", {
     method: "POST",
     body: formData,
   });
