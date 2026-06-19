@@ -64,6 +64,7 @@ export type DeckEvaluation = {
 };
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const ENABLE_EXAMPLE_DECKS = process.env.NEXT_PUBLIC_ENABLE_EXAMPLE_DECKS === "true";
 
 type RequestOptions = {
   accessToken?: string | null;
@@ -230,7 +231,11 @@ function normalizeDeckSummary(deck: Partial<Deck> & { deck_id?: string }): DeckS
 
 export async function getDecks(options: RequestOptions = {}): Promise<{ decks: DeckSummary[]; isFallback: boolean; error?: string }> {
   if (!API_URL) {
-    return { decks: fallbackDecks, isFallback: true, error: "NEXT_PUBLIC_API_URL is not configured." };
+    return {
+      decks: ENABLE_EXAMPLE_DECKS ? fallbackDecks : [],
+      isFallback: true,
+      error: "NEXT_PUBLIC_API_URL is not configured.",
+    };
   }
 
   try {
@@ -238,7 +243,7 @@ export async function getDecks(options: RequestOptions = {}): Promise<{ decks: D
     return { decks: Array.isArray(data) ? data : data.decks, isFallback: false };
   } catch (error) {
     return {
-      decks: fallbackDecks,
+      decks: ENABLE_EXAMPLE_DECKS ? fallbackDecks : [],
       isFallback: true,
       error: error instanceof Error ? error.message : "Deck list request failed.",
     };
@@ -247,14 +252,14 @@ export async function getDecks(options: RequestOptions = {}): Promise<{ decks: D
 
 export async function getDeckSlides(deckId: string, options: RequestOptions = {}): Promise<{ slides: DeckSlide[]; isFallback: boolean }> {
   if (!API_URL) {
-    return { slides: fallbackSlides[deckId] ?? [], isFallback: true };
+    return { slides: ENABLE_EXAMPLE_DECKS ? fallbackSlides[deckId] ?? [] : [], isFallback: true };
   }
 
   try {
     const data = await request<DeckSlide[] | { slides: DeckSlide[] }>(`/api/decks/${deckId}/slides`, undefined, options);
     return { slides: Array.isArray(data) ? data : data.slides, isFallback: false };
   } catch {
-    return { slides: fallbackSlides[deckId] ?? [], isFallback: true };
+    return { slides: ENABLE_EXAMPLE_DECKS ? fallbackSlides[deckId] ?? [] : [], isFallback: true };
   }
 }
 
@@ -318,7 +323,7 @@ export async function getDeckDetail(deckId: string, options: RequestOptions = {}
       isFallback: slidesResult.isFallback,
     };
   } catch {
-    const fallbackDeck = fallbackDecks.find((item) => item.deck_id === deckId);
+    const fallbackDeck = ENABLE_EXAMPLE_DECKS ? fallbackDecks.find((item) => item.deck_id === deckId) : undefined;
     if (!fallbackDeck && !slidesResult.slides.length) {
       throw new ApiError(`Deck ${deckId} could not be loaded.`);
     }

@@ -56,7 +56,7 @@ export default async function HomePage() {
 
           {isFallback ? (
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-700">
-              Backend gallery data is unavailable, so the homepage is showing example entries without live PDF embeds.
+              Backend gallery data is unavailable.
               {error ? <span className="mt-2 block font-medium">Reason: {error}</span> : null}
             </div>
           ) : null}
@@ -71,6 +71,12 @@ export default async function HomePage() {
           </div>
 
           <div className="grid gap-8 xl:grid-cols-2">
+            {!decks.length ? (
+              <div className="rounded-[2rem] border border-slate-200 bg-white px-6 py-10 text-sm leading-7 text-slate-600 shadow-sm xl:col-span-2">
+                No decks are available for this account yet. If you expected decks here, check that the frontend Vercel project has
+                `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set, and that the backend is reachable.
+              </div>
+            ) : null}
             {decks.map((deck) => (
               <article
                 key={deck.deck_id}
@@ -173,9 +179,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mt-12">
-          <DeckUploadWidget />
-        </section>
+        {!isFallback ? (
+          <section className="mt-12">
+            <DeckUploadWidget />
+          </section>
+        ) : null}
       </div>
     </div>
   );
