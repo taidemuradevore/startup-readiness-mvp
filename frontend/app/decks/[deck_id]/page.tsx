@@ -5,6 +5,7 @@ import { AnnotatedPdfViewer } from "@/components/annotated-pdf-viewer";
 import { DeleteDeckButton } from "@/components/delete-deck-button";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getDeckDetail } from "@/lib/api";
+import { isExampleDeckId } from "@/lib/decks";
 import { getAccessToken } from "@/lib/supabase/access-token";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +61,7 @@ export default async function DeckDetailPage({
                   {deck.score_summary?.red_flag_count ?? 0} red flag{deck.score_summary?.red_flag_count === 1 ? "" : "s"}
                 </p>
               </div>
-              {!isFallback ? <DeleteDeckButton deckId={deck.deck_id} redirectToHome /> : null}
+              {!isFallback && !isExampleDeckId(deck.deck_id) ? <DeleteDeckButton deckId={deck.deck_id} redirectToHome /> : null}
               {isFallback ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                   Using fallback slide data because the backend content endpoints are unavailable.

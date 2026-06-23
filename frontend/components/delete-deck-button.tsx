@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { deleteDeck } from "@/lib/api";
+import { isExampleDeckId } from "@/lib/decks";
 
 export function DeleteDeckButton({
   deckId,
@@ -17,6 +18,10 @@ export function DeleteDeckButton({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  if (isExampleDeckId(deckId)) {
+    return null;
+  }
 
   return (
     <div className="space-y-2">

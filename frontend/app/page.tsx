@@ -4,6 +4,7 @@ import { DeleteDeckButton } from "@/components/delete-deck-button";
 import { DeckUploadWidget } from "@/components/deck-upload-widget";
 import { SignOutButton } from "@/components/sign-out-button";
 import { getDecks } from "@/lib/api";
+import { isExampleDeckId } from "@/lib/decks";
 import { getAccessToken } from "@/lib/supabase/access-token";
 
 export const dynamic = "force-dynamic";
@@ -170,7 +171,7 @@ export default async function HomePage() {
                       >
                         Open deck detail
                       </Link>
-                      {!isFallback ? <DeleteDeckButton deckId={deck.deck_id} className="w-full" /> : null}
+                      {!isFallback && !isExampleDeckId(deck.deck_id) ? <DeleteDeckButton deckId={deck.deck_id} className="w-full" /> : null}
                     </div>
                   </div>
                 </div>
