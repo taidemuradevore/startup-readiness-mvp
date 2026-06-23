@@ -371,7 +371,7 @@ class SQLDatabase():
             '''
             SELECT deck_id, company_name, sector, stage, team, storage_object_path
             FROM DECK
-            WHERE deck_id = %s AND owner_id = %s
+            WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
             ''',
             (deck_id, owner_id),
         )
@@ -445,8 +445,7 @@ class SQLDatabase():
                 ORDER BY company_name ASC
                 ''',
             )
-        rows = cur.fetchall()
-
+            rows = cur.fetchall()
         def _parse_json_list(value, default):
             if value is None:
                 return default
@@ -480,7 +479,7 @@ class SQLDatabase():
             '''
             SELECT deck_id, company_name, sector, stage, team, storage_object_path
             FROM DECK
-            WHERE deck_id = %s AND owner_id = %s
+            WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
             ''',
             (deck_id, owner_id),
         )
@@ -519,7 +518,7 @@ class SQLDatabase():
             FROM SLIDE
             JOIN DECK ON DECK.deck_id = SLIDE.deck_id
             WHERE SLIDE.deck_id = %s
-              AND DECK.owner_id = %s
+              AND (DECK.owner_id = %s OR DECK.owner_id IS NULL)
             ORDER BY slide_number
             ''',
             (deck_id, owner_id),
@@ -531,7 +530,7 @@ class SQLDatabase():
                 '''
                 SELECT 1
                 FROM DECK
-                WHERE deck_id = %s AND owner_id = %s
+                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
                 ''',
                 (deck_id, owner_id),
             )
