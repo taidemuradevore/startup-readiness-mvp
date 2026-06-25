@@ -1,3 +1,3 @@
 export function isExampleDeckId(deckId: string) {
-  return deckId.startsWith("fallback_");
+  return deckId.startsWith("fallback");
 }

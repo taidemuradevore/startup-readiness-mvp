@@ -1,4 +1,5 @@
 import io
+import os
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,15 +33,23 @@ class EvalDeckRequest(BaseModel):
     eval : bool = Field(..., description="Determines whether or not a deck is fully evaluated")
 
 app = FastAPI(title="Deck Ingestion API")
+
+def _cors_origins() -> list[str]:
+    configured_origins = os.getenv("FRONTEND_ORIGINS", "")
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://startup-readiness-mvp.vercel.app",
+    ]
+    origins.extend(origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip())
+    return list(dict.fromkeys(origins))
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-          "http://localhost:3000",
-          "http://127.0.0.1:3000",
-          "http://localhost:3001",
-          "http://127.0.0.1:3001",
-          "https://startup-readiness-mvp.vercel.app/"
-    ],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -231,9 +240,11 @@ async def evaluate_deck_upload_endpoint(
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> PitchDeckEvaluation:
     try:
+        print("evaluate_upload:start", {"user_id": current_user.id, "filename": file.filename})
         file_bytes = await file.read()
         if not file_bytes:
             raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        print("evaluate_upload:file_read", {"bytes": len(file_bytes), "content_type": file.content_type})
 
         storage = _get_storage_client()
         storage_result = storage.upload_deck_pdf(
@@ -241,14 +252,17 @@ async def evaluate_deck_upload_endpoint(
             original_filename=file.filename,
             content_type=file.content_type,
         )
+        print("evaluate_upload:storage_uploaded", {"path": storage_result.get("path") or storage_result.get("Key")})
 
         parser = DeckParser(eval)
         uploaded_file = parser.client.files.upload(
             file=io.BytesIO(file_bytes),
             config={"mime_type": file.content_type or "application/pdf", "display_name": file.filename or "deck.pdf"},
         )
+        print("evaluate_upload:gemini_uploaded", {"name": uploaded_file.name})
 
         deck = parser._evaluate_uploaded_file(uploaded_file)
+        print("evaluate_upload:evaluated", {"company": deck.deck.company if deck.deck else None})
 
         conn = db.connect()
         db.ingest_deck(
@@ -258,6 +272,7 @@ async def evaluate_deck_upload_endpoint(
             storage_object_path=storage_result.get("path") or storage_result.get("Key"),
             owner_id=current_user.id,
         )
+        print("evaluate_upload:ingested", {"user_id": current_user.id})
         return deck
     except HTTPException:
         raise
