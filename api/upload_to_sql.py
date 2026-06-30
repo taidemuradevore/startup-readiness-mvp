@@ -7,6 +7,7 @@ import unittest
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
+from supabase import Client
 try:
     from .llm_parser import Deck, DeckSlide, PitchDeckEvaluation
 except ImportError:
@@ -235,6 +236,7 @@ class SQLDatabase():
         red_flag_rows = cur.fetchall()
 
         numeric_scores = [float(row["value"]) for row in score_rows if row.get("value") is not None]
+        print(numeric_scores)
         breakdown = [
             {
                 "rubric_section": row["rubric_section"],
@@ -364,18 +366,29 @@ class SQLDatabase():
             )
         conn.commit()
     
-    def retrieve_deck(self, conn, deck_id, owner_id: str):
+    def retrieve_deck(self, conn, deck_id, owner_id: str, is_admin : bool):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        self._ensure_deck_owner_column(cur)
-        cur.execute(
-            '''
-            SELECT deck_id, company_name, sector, stage, team, storage_object_path
-            FROM DECK
-            WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
-            ''',
-            (deck_id, owner_id),
-        )
-        deck_row = cur.fetchone()
+        if is_admin:
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s
+                ''',
+                (deck_id,),
+            )
+            deck_row = cur.fetchone()
+        else:
+            self._ensure_deck_owner_column(cur)
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                ''',
+                (deck_id, owner_id),
+            )
+            deck_row = cur.fetchone()
 
         if deck_row is None:
             raise ValueError(f"No deck found for deck_id={deck_id}")
@@ -423,8 +436,8 @@ class SQLDatabase():
             slides=slides,
         )
 
-    def list_decks(self, conn, owner_id: str):
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    def list_decks(self, conn, owner_id: str, is_admin : bool):
+        cur : psycopg2.extras.RealDictCursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._ensure_deck_owner_column(cur)
         cur.execute(
             '''
@@ -436,6 +449,17 @@ class SQLDatabase():
             (owner_id,),
         )
         rows = cur.fetchall()
+        
+        if is_admin:
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                ORDER BY company_name ASC
+                LIMIT 10
+                ''',
+            )
+            rows.extend(cur.fetchall())
         if not rows:
             cur.execute(
                 '''
@@ -472,19 +496,29 @@ class SQLDatabase():
             )
         return decks
 
-    def retrieve_deck_metadata(self, conn, deck_id, owner_id: str):
+    def retrieve_deck_metadata(self, conn, deck_id, owner_id: str, is_admin : bool):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        self._ensure_deck_owner_column(cur)
-        cur.execute(
-            '''
-            SELECT deck_id, company_name, sector, stage, team, storage_object_path
-            FROM DECK
-            WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
-            ''',
-            (deck_id, owner_id),
-        )
-        row = cur.fetchone()
-
+        if is_admin:
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s
+                ''',
+                (deck_id,),
+            )
+            row = cur.fetchone()
+        else: 
+            self._ensure_deck_owner_column(cur)
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                ''',
+                (deck_id, owner_id),
+            )
+            row = cur.fetchone()
         if row is None:
             raise ValueError(f"No deck found for deck_id={deck_id}")
 
@@ -509,32 +543,55 @@ class SQLDatabase():
             "score_summary": self._build_score_summary(conn, deck_id),
         }
 
-    def retrieve_slides(self, conn, deck_id, owner_id: str):
+    def retrieve_slides(self, conn, deck_id, owner_id: str, is_admin : bool):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        self._ensure_deck_owner_column(cur)
-        cur.execute(
-            '''
-            SELECT slide_number, slide_section, extracted_text, graphic_path
-            FROM SLIDE
-            JOIN DECK ON DECK.deck_id = SLIDE.deck_id
-            WHERE SLIDE.deck_id = %s
-              AND (DECK.owner_id = %s OR DECK.owner_id IS NULL)
-            ORDER BY slide_number
-            ''',
-            (deck_id, owner_id),
-        )
-        rows = cur.fetchall()
-
-        if not rows:
+        if is_admin:
             cur.execute(
                 '''
-                SELECT 1
-                FROM DECK
-                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                SELECT slide_number, slide_section, extracted_text, graphic_path
+                FROM SLIDE
+                JOIN DECK ON DECK.deck_id = SLIDE.deck_id
+                WHERE SLIDE.deck_id = %s
+                ORDER BY slide_number
+                ''',
+                (deck_id,),
+            )
+            rows = cur.fetchall()
+        else:
+            self._ensure_deck_owner_column(cur)
+            cur.execute(
+                '''
+                SELECT slide_number, slide_section, extracted_text, graphic_path
+                FROM SLIDE
+                JOIN DECK ON DECK.deck_id = SLIDE.deck_id
+                WHERE SLIDE.deck_id = %s
+                AND (DECK.owner_id = %s OR DECK.owner_id IS NULL)
+                ORDER BY slide_number
                 ''',
                 (deck_id, owner_id),
             )
-            deck_exists = cur.fetchone()
+            rows = cur.fetchall()
+        if not rows:
+            if is_admin:
+                cur.execute(
+                    '''
+                    SELECT 1
+                    FROM DECK
+                    WHERE deck_id = %s
+                    ''',
+                    (deck_id,),
+                )
+                deck_exists = cur.fetchone()
+            else:
+                cur.execute(
+                    '''
+                    SELECT 1
+                    FROM DECK
+                    WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                    ''',
+                    (deck_id, owner_id),
+                )
+                deck_exists = cur.fetchone()
             if deck_exists is None:
                 raise ValueError(f"No deck found for deck_id={deck_id}")
 
@@ -588,9 +645,6 @@ class SQLDatabase():
             "storage_object_path": deck_row.get("storage_object_path"),
         }
 
-
-
-
 class TestUpsert(unittest.TestCase):
     def testupsert(self):
         db = SQLDatabase()
@@ -599,7 +653,7 @@ class TestUpsert(unittest.TestCase):
         deck = db.load_deck_from_json("sample_startup_deck.json")
         self.assertIsInstance(deck, Deck)
         self.assertGreater(len(deck.slides), 0)
-        retrieved : Deck = db.retrieve_deck(conn, "1906", "00000000-0000-0000-0000-000000000000")
+        retrieved : Deck = db.retrieve_deck(conn, "1906", "00000000-0000-0000-0000-000000000000", True)
         self.assertEqual(retrieved.company, deck.company)
         self.assertEqual(retrieved.team, deck.team)
 

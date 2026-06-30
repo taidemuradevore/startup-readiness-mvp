@@ -104,7 +104,7 @@ def list_decks_endpoint(current_user: AuthenticatedUser = Depends(get_current_us
     try:
         conn = db.connect()
         try:
-            decks = db.list_decks(conn, current_user.id)
+            decks = db.list_decks(conn, current_user.id, current_user.is_admin)
             print(
                 "list_decks",
                 {"user_id": current_user.id, "deck_ids": [deck.get("deck_id") for deck in decks]},
@@ -124,7 +124,7 @@ def retrieve_deck_metadata_endpoint(
     try:
         conn = db.connect()
         try:
-            deck = db.retrieve_deck_metadata(conn, deck_id, current_user.id)
+            deck = db.retrieve_deck_metadata(conn, deck_id, current_user.id, current_user.is_admin)
             print(
                 "retrieve_deck_metadata",
                 {"user_id": current_user.id, "deck_id": deck_id, "found": True},
@@ -150,7 +150,7 @@ def retrieve_deck_slides_endpoint(
     try:
         conn = db.connect()
         try:
-            slides = db.retrieve_slides(conn, deck_id, current_user.id)
+            slides = db.retrieve_slides(conn, deck_id, current_user.id, current_user.is_admin)
             print(
                 "retrieve_deck_slides",
                 {"user_id": current_user.id, "deck_id": deck_id, "slide_count": len(slides)},
@@ -211,7 +211,7 @@ def load_deck_from_sql_endpoint(
 ) -> Deck:
     try:
         conn = db.connect()
-        return db.retrieve_deck(conn, request.deck_id, current_user.id)
+        return db.retrieve_deck(conn, request.deck_id, current_user.id, current_user.is_admin)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     

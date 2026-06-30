@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from supabase import create_client
+from supabase import Client, create_client
 
 
 load_dotenv()
@@ -16,6 +16,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 class AuthenticatedUser:
     id: str
     email: str | None = None
+    is_admin : bool = False
 
 
 def _get_supabase_auth_client():
@@ -29,6 +30,13 @@ def _get_supabase_auth_client():
 
     return create_client(supabase_url, publishable_key)
 
+def get_is_admin(client : Client, user_id : str) -> bool:
+    response = client.rpc(
+        'check_admin_exists', 
+        {'target_user_id': user_id}
+        ).execute()
+    is_admin = bool(response.data) # Output: True or False
+    return is_admin
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
@@ -37,7 +45,8 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
     try:
-        user_response = _get_supabase_auth_client().auth.get_user(credentials.credentials)
+        client = _get_supabase_auth_client()
+        user_response = client.auth.get_user(credentials.credentials)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid bearer token") from exc
 
@@ -46,7 +55,10 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
 
+    is_admin = get_is_admin(client, user_id)
+
     return AuthenticatedUser(
         id=user_id,
         email=getattr(user, "email", None),
+        is_admin= is_admin
     )
