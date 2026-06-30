@@ -618,17 +618,27 @@ class SQLDatabase():
             )
         return slides
 
-    def delete_deck(self, conn, deck_id: str, owner_id: str):
+    def delete_deck(self, conn, deck_id: str, owner_id: str, is_admin: bool = False):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._ensure_deck_owner_column(cur)
-        cur.execute(
-            '''
-            SELECT deck_id, storage_object_path
-            FROM DECK
-            WHERE deck_id = %s AND owner_id = %s
-            ''',
-            (deck_id, owner_id),
-        )
+        if is_admin:
+            cur.execute(
+                '''
+                SELECT deck_id, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s
+                ''',
+                (deck_id,),
+            )
+        else:
+            cur.execute(
+                '''
+                SELECT deck_id, storage_object_path
+                FROM DECK
+                WHERE deck_id = %s AND owner_id = %s
+                ''',
+                (deck_id, owner_id),
+            )
         deck_row = cur.fetchone()
 
         if deck_row is None:

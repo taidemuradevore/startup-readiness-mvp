@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from supabase import Client, create_client
+from supabase import create_client
 
 
 load_dotenv()
@@ -16,27 +16,63 @@ bearer_scheme = HTTPBearer(auto_error=False)
 class AuthenticatedUser:
     id: str
     email: str | None = None
-    is_admin : bool = False
+    is_admin: bool = False
+
+
+def _get_supabase_url() -> str:
+    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    if not supabase_url:
+        raise RuntimeError("SUPABASE_URL is not set in the environment")
+    return supabase_url
 
 
 def _get_supabase_auth_client():
-    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     publishable_key = os.getenv("SUPABASE_PUBLISHABLE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
-
-    if not supabase_url:
-        raise RuntimeError("SUPABASE_URL is not set in the environment")
     if not publishable_key:
         raise RuntimeError("SUPABASE_PUBLISHABLE_KEY is not set in the environment")
 
-    return create_client(supabase_url, publishable_key)
+    return create_client(_get_supabase_url(), publishable_key)
 
-def get_is_admin(client : Client, user_id : str) -> bool:
-    response = client.rpc(
-        'check_admin_exists', 
-        {'target_user_id': user_id}
+
+def _get_supabase_admin_client():
+    service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not service_role_key:
+        return None
+
+    return create_client(_get_supabase_url(), service_role_key)
+
+
+def _coerce_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, list):
+        if not value:
+            return False
+        return _coerce_bool(value[0])
+    if isinstance(value, dict):
+        for key in ("check_admin_exists", "exists", "is_admin"):
+            if key in value:
+                return _coerce_bool(value[key])
+        if len(value) == 1:
+            return _coerce_bool(next(iter(value.values())))
+    return bool(value)
+
+
+def get_is_admin(user_id: str) -> bool:
+    client = _get_supabase_admin_client()
+    if client is None:
+        return False
+
+    try:
+        response = client.rpc(
+            "check_admin_exists",
+            {"target_user_id": user_id},
         ).execute()
-    is_admin = bool(response.data) # Output: True or False
-    return is_admin
+    except Exception as exc:
+        print("admin_lookup_failed", {"user_id": user_id, "error": str(exc)})
+        return False
+
+    return _coerce_bool(response.data)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
@@ -55,10 +91,10 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
 
-    is_admin = get_is_admin(client, user_id)
+    is_admin = get_is_admin(user_id)
 
     return AuthenticatedUser(
         id=user_id,
         email=getattr(user, "email", None),
-        is_admin= is_admin
+        is_admin=is_admin,
     )

@@ -107,7 +107,7 @@ def list_decks_endpoint(current_user: AuthenticatedUser = Depends(get_current_us
             decks = db.list_decks(conn, current_user.id, current_user.is_admin)
             print(
                 "list_decks",
-                {"user_id": current_user.id, "deck_ids": [deck.get("deck_id") for deck in decks]},
+                {"user_id": current_user.id, "deck_ids": [deck.get("deck_id") for deck in decks], "is_admin" : current_user.is_admin},
             )
             return _attach_storage_urls(decks)
         finally:
@@ -176,7 +176,7 @@ def delete_deck_endpoint(
     try:
         conn = db.connect()
         try:
-            deleted = db.delete_deck(conn, deck_id, current_user.id)
+            deleted = db.delete_deck(conn, deck_id, current_user.id, current_user.is_admin)
         finally:
             conn.close()
 
