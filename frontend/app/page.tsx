@@ -93,7 +93,7 @@ export default async function HomePage() {
                       <ScorePill label="Stage" value={deck.stage || "Unknown"} />
                       <ScorePill
                         label="Score"
-                        value={deck.score_summary?.overall_score != null ? `${deck.score_summary.overall_score}/100` : "Pending"}
+                        value={deck.score_summary?.overall_score != null ? `${Number(Number(deck.score_summary.overall_score / 110 * 100).toFixed(2))}%` : "Pending"}
                       />
                       <ScorePill
                         label="Red flags"
@@ -136,9 +136,9 @@ export default async function HomePage() {
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Score Snapshot</p>
                       <div className="mt-3 rounded-[1.5rem] bg-slate-950 p-5 text-white">
                         <p className="text-4xl font-semibold tracking-tight">
-                          {deck.score_summary?.overall_score != null ? deck.score_summary.overall_score : "—"}
+                          {deck.score_summary?.overall_score != null ? `${Number(Number(deck.score_summary.overall_score / 110 * 100).toFixed(2))}%`: "—"}
                         </p>
-                        <p className="mt-1 text-sm text-slate-300">Overall score out of 100</p>
+                        <p className="mt-1 text-sm text-slate-300">Overall percentage</p>
                         <p className="mt-4 text-xs uppercase tracking-[0.18em] text-slate-400">
                           {deck.score_summary?.scored_sections ?? 0} scored sections
                         </p>

@@ -172,8 +172,8 @@ class DeckParser:
         The Ask, OTHER, Qualitative
 
         SCORE THRESHOLDS
-        85–100	Invest
-        70–84	Strong Consideration
+        90–110	Invest
+        70–89	Strong Consideration
         55–69	Conditional Pass
         40–54	Needs Work
         < 40	Pass
@@ -385,7 +385,7 @@ class DeckParser:
 
     def calculate_fundability_score(self, evaluation: PitchDeckEvaluation) -> float:
         """
-        Calculate a weighted fundability score out of 100 based on the Core 10 rubric.
+        Calculate a weighted fundability score out of 110 based on the Core 10 rubric.
         
         Missing sections (is_present=False) receive a 0 for that category.
         
@@ -393,7 +393,7 @@ class DeckParser:
             evaluation: PitchDeckEvaluation object to score.
             
         Returns:
-            float: Fundability score between 0 and 100.
+            float: Fundability score between 0 and 110.
         """
         # Define the weights (must sum to 1.0)
         sections = [

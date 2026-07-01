@@ -439,17 +439,6 @@ class SQLDatabase():
     def list_decks(self, conn, owner_id: str, is_admin : bool):
         cur : psycopg2.extras.RealDictCursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._ensure_deck_owner_column(cur)
-        cur.execute(
-            '''
-            SELECT deck_id, company_name, sector, stage, team, storage_object_path
-            FROM DECK
-            WHERE owner_id = %s
-            ORDER BY company_name ASC
-            ''',
-            (owner_id,),
-        )
-        rows = cur.fetchall()
-        
         if is_admin:
             cur.execute(
                 '''
@@ -459,8 +448,20 @@ class SQLDatabase():
                 LIMIT 10
                 ''',
             )
-            rows.extend(cur.fetchall())
-        if not rows:
+            rows = cur.fetchall()
+        else:
+            cur.execute(
+                '''
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                FROM DECK
+                WHERE owner_id = %s
+                ORDER BY company_name ASC
+                ''',
+                (owner_id,),
+            )
+            rows = cur.fetchall()
+
+        if not rows and not is_admin:
             cur.execute(
                 '''
                 SELECT deck_id, company_name, sector, stage, team, storage_object_path
