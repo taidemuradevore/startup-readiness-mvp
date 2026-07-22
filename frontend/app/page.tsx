@@ -1,9 +1,11 @@
 import Link from "next/link";
 
+import { DeckVisibilityToggle } from "@/components/deck-visibility-toggle";
 import { DeleteDeckButton } from "@/components/delete-deck-button";
 import { DeckUploadWidget } from "@/components/deck-upload-widget";
+import { ProfileModal } from "@/components/profile-modal";
 import { SignOutButton } from "@/components/sign-out-button";
-import { getDecks } from "@/lib/api";
+import { getDecks, getUserProfile, type UserProfile } from "@/lib/api";
 import { isExampleDeckId } from "@/lib/decks";
 import { getAccessToken } from "@/lib/supabase/access-token";
 
@@ -26,6 +28,15 @@ function ScorePill({
 export default async function HomePage() {
   const accessToken = await getAccessToken();
   const { decks, isFallback, error } = await getDecks({ accessToken });
+  let profile: UserProfile | null = null;
+  let shouldAutoOpenProfile = false;
+
+  try {
+    profile = await getUserProfile({ accessToken });
+    shouldAutoOpenProfile = !profile;
+  } catch {
+    shouldAutoOpenProfile = false;
+  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f5f7fb_0%,#eef2ff_38%,#f8fafc_100%)] px-6 py-10">
@@ -51,7 +62,8 @@ export default async function HomePage() {
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Mode</p>
                 <p className="mt-1 text-sm font-medium text-slate-950">{isFallback ? "Example fallback" : "Live backend"}</p>
               </div>
-              <SignOutButton className="col-span-2 w-full" />
+              <ProfileModal initialProfile={profile} autoOpen={shouldAutoOpenProfile} className="w-full" />
+              <SignOutButton className="w-full" />
             </div>
           </div>
 
@@ -98,6 +110,10 @@ export default async function HomePage() {
                       <ScorePill
                         label="Red flags"
                         value={String(deck.score_summary?.red_flag_count ?? 0)}
+                      />
+                      <ScorePill
+                        label="VC visibility"
+                        value={deck.visible_to_vcs ? "Visible" : "Hidden"}
                       />
                     </div>
                   </div>
@@ -171,7 +187,16 @@ export default async function HomePage() {
                       >
                         Open deck detail
                       </Link>
-                      {!isFallback && !isExampleDeckId(deck.deck_id) ? <DeleteDeckButton deckId={deck.deck_id} className="w-full" /> : null}
+                      {deck.can_manage_visibility ? (
+                        <DeckVisibilityToggle
+                          deckId={deck.deck_id}
+                          initialVisible={Boolean(deck.visible_to_vcs)}
+                          className="w-full"
+                        />
+                      ) : null}
+                      {!isFallback && deck.can_manage_visibility && !isExampleDeckId(deck.deck_id) ? (
+                        <DeleteDeckButton deckId={deck.deck_id} className="w-full" />
+                      ) : null}
                     </div>
                   </div>
                 </div>

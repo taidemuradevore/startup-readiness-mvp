@@ -1,5 +1,6 @@
 import io
 import os
+from typing import Literal
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +32,25 @@ class SQLDeckRequest(BaseModel):
 class EvalDeckRequest(BaseModel):
     pdf_path: str = Field(..., description="Path to a local PDF file containing a deck")
     eval : bool = Field(..., description="Determines whether or not a deck is fully evaluated")
+
+class DeckVisibilityRequest(BaseModel):
+    visible_to_vcs: bool
+
+class UserProfileRequest(BaseModel):
+    profile_type: Literal["startup", "vc"]
+    organization_name: str
+    website: str
+    role_title: str
+    sector_focus: str
+    geography: str
+    description: str
+    startup_stage: str | None = None
+    fund_stage_focus: str | None = None
+    check_size_range: str | None = None
+    fundraising_status: str | None = None
+    target_raise: str | None = None
+    traction_summary: str | None = None
+    notes: str | None = None
 
 app = FastAPI(title="Deck Ingestion API")
 
@@ -95,16 +115,104 @@ def _evaluate_and_ingest(pdf_path: str, eval_flag: bool, owner_id: str) -> Pitch
     db.ingest_deck(conn, deck, eval_included=True, owner_id=owner_id)
     return deck
 
+
+def _clean_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _validated_profile_payload(profile: UserProfileRequest) -> dict:
+    payload = {
+        "profile_type": profile.profile_type,
+        "organization_name": profile.organization_name.strip(),
+        "website": profile.website.strip(),
+        "role_title": profile.role_title.strip(),
+        "sector_focus": profile.sector_focus.strip(),
+        "geography": profile.geography.strip(),
+        "description": profile.description.strip(),
+        "startup_stage": _clean_optional_text(profile.startup_stage),
+        "fund_stage_focus": _clean_optional_text(profile.fund_stage_focus),
+        "check_size_range": _clean_optional_text(profile.check_size_range),
+        "fundraising_status": _clean_optional_text(profile.fundraising_status),
+        "target_raise": _clean_optional_text(profile.target_raise),
+        "traction_summary": _clean_optional_text(profile.traction_summary),
+        "notes": _clean_optional_text(profile.notes),
+    }
+
+    required_fields = [
+        "organization_name",
+        "website",
+        "role_title",
+        "sector_focus",
+        "geography",
+        "description",
+    ]
+    if profile.profile_type == "startup":
+        required_fields.append("startup_stage")
+        payload["fund_stage_focus"] = None
+    else:
+        required_fields.append("fund_stage_focus")
+        payload["startup_stage"] = None
+        payload["fundraising_status"] = None
+        payload["target_raise"] = None
+        payload["traction_summary"] = None
+
+    missing_fields = [field for field in required_fields if not payload.get(field)]
+    if missing_fields:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Missing required profile fields: {', '.join(missing_fields)}",
+        )
+
+    return payload
+
+
+def _current_user_is_vc(conn, user_id: str) -> bool:
+    return db.get_user_profile_type(conn, user_id) == "vc"
+
 @app.get("/api/health")
 def return_health():
     return {"status" : "healthy"}
+
+
+@app.get("/api/profile")
+def get_profile_endpoint(current_user: AuthenticatedUser = Depends(get_current_user)):
+    try:
+        conn = db.connect()
+        try:
+            return db.retrieve_user_profile(conn, current_user.id)
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.put("/api/profile")
+def upsert_profile_endpoint(
+    request: UserProfileRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        payload = _validated_profile_payload(request)
+        conn = db.connect()
+        try:
+            return db.upsert_user_profile(conn, current_user.id, payload)
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 @app.get("/api/decks")
 def list_decks_endpoint(current_user: AuthenticatedUser = Depends(get_current_user)):
     try:
         conn = db.connect()
         try:
-            decks = db.list_decks(conn, current_user.id, current_user.is_admin)
+            viewer_is_vc = _current_user_is_vc(conn, current_user.id)
+            decks = db.list_decks(conn, current_user.id, current_user.is_admin, viewer_is_vc)
             print(
                 "list_decks",
                 {"user_id": current_user.id, "deck_ids": [deck.get("deck_id") for deck in decks], "is_admin" : current_user.is_admin},
@@ -124,7 +232,8 @@ def retrieve_deck_metadata_endpoint(
     try:
         conn = db.connect()
         try:
-            deck = db.retrieve_deck_metadata(conn, deck_id, current_user.id, current_user.is_admin)
+            viewer_is_vc = _current_user_is_vc(conn, current_user.id)
+            deck = db.retrieve_deck_metadata(conn, deck_id, current_user.id, current_user.is_admin, viewer_is_vc)
             print(
                 "retrieve_deck_metadata",
                 {"user_id": current_user.id, "deck_id": deck_id, "found": True},
@@ -150,7 +259,8 @@ def retrieve_deck_slides_endpoint(
     try:
         conn = db.connect()
         try:
-            slides = db.retrieve_slides(conn, deck_id, current_user.id, current_user.is_admin)
+            viewer_is_vc = _current_user_is_vc(conn, current_user.id)
+            slides = db.retrieve_slides(conn, deck_id, current_user.id, current_user.is_admin, viewer_is_vc)
             print(
                 "retrieve_deck_slides",
                 {"user_id": current_user.id, "deck_id": deck_id, "slide_count": len(slides)},
@@ -163,6 +273,30 @@ def retrieve_deck_slides_endpoint(
             "retrieve_deck_slides",
             {"user_id": current_user.id, "deck_id": deck_id, "found": False, "error": str(exc)},
         )
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.patch("/api/decks/{deck_id}/visibility")
+def update_deck_visibility_endpoint(
+    deck_id: str,
+    request: DeckVisibilityRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+):
+    try:
+        conn = db.connect()
+        try:
+            return db.update_deck_visibility(
+                conn,
+                deck_id,
+                current_user.id,
+                request.visible_to_vcs,
+                current_user.is_admin,
+            )
+        finally:
+            conn.close()
+    except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -211,7 +345,8 @@ def load_deck_from_sql_endpoint(
 ) -> Deck:
     try:
         conn = db.connect()
-        return db.retrieve_deck(conn, request.deck_id, current_user.id, current_user.is_admin)
+        viewer_is_vc = _current_user_is_vc(conn, current_user.id)
+        return db.retrieve_deck(conn, request.deck_id, current_user.id, current_user.is_admin, viewer_is_vc)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     
@@ -237,6 +372,7 @@ def evaluate_deck_endpoint(
 async def evaluate_deck_upload_endpoint(
     file: UploadFile = File(...),
     eval: bool = Form(True),
+    visible_to_vcs: bool = Form(False),
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> PitchDeckEvaluation:
     try:
@@ -271,6 +407,7 @@ async def evaluate_deck_upload_endpoint(
             eval_included=True,
             storage_object_path=storage_result.get("path") or storage_result.get("Key"),
             owner_id=current_user.id,
+            visible_to_vcs=visible_to_vcs,
         )
         print("evaluate_upload:ingested", {"user_id": current_user.id})
         return deck

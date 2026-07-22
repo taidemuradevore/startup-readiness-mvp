@@ -24,6 +24,8 @@ export type DeckSummary = {
   team: string[];
   storage_object_path?: string | null;
   deck_pdf_url?: string | null;
+  visible_to_vcs?: boolean;
+  can_manage_visibility?: boolean;
   score_summary?: {
     overall_score: number | null;
     scored_sections: number;
@@ -61,6 +63,45 @@ export type DeckEvaluation = {
   s8_team: DeckEvaluationSection;
   s9_traction_and_kpis: DeckEvaluationSection;
   s10_the_ask_and_financials: DeckEvaluationSection;
+};
+
+export type ProfileType = "startup" | "vc";
+
+export type UserProfile = {
+  user_id: string;
+  profile_type: ProfileType;
+  organization_name: string;
+  website: string;
+  role_title: string;
+  sector_focus: string;
+  geography: string;
+  description: string;
+  startup_stage: string | null;
+  fund_stage_focus: string | null;
+  check_size_range: string | null;
+  fundraising_status: string | null;
+  target_raise: string | null;
+  traction_summary: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProfilePayload = {
+  profile_type: ProfileType;
+  organization_name: string;
+  website: string;
+  role_title: string;
+  sector_focus: string;
+  geography: string;
+  description: string;
+  startup_stage?: string | null;
+  fund_stage_focus?: string | null;
+  check_size_range?: string | null;
+  fundraising_status?: string | null;
+  target_raise?: string | null;
+  traction_summary?: string | null;
+  notes?: string | null;
 };
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
@@ -250,6 +291,17 @@ export async function getDecks(options: RequestOptions = {}): Promise<{ decks: D
   }
 }
 
+export async function getUserProfile(options: RequestOptions = {}): Promise<UserProfile | null> {
+  return request<UserProfile | null>("/api/profile", undefined, options);
+}
+
+export async function saveUserProfile(payload: ProfilePayload): Promise<UserProfile> {
+  return request<UserProfile>("/api/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getDeckSlides(deckId: string, options: RequestOptions = {}): Promise<{ slides: DeckSlide[]; isFallback: boolean }> {
   if (!API_URL) {
     return { slides: ENABLE_EXAMPLE_DECKS ? fallbackSlides[deckId] ?? [] : [], isFallback: true };
@@ -301,14 +353,30 @@ export async function evaluateDeck(pdfPath: string, evalFlag: boolean): Promise<
   });
 }
 
-export async function evaluateDeckUpload(file: File, evalFlag: boolean): Promise<DeckEvaluation> {
+export async function evaluateDeckUpload(file: File, evalFlag: boolean, visibleToVcs: boolean): Promise<DeckEvaluation> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("eval", String(evalFlag));
+  formData.append("visible_to_vcs", String(visibleToVcs));
 
   return request<DeckEvaluation>("/api/decks/evaluate-upload", {
     method: "POST",
     body: formData,
+  });
+}
+
+export async function updateDeckVisibility(deckId: string, visibleToVcs: boolean): Promise<{
+  deck_id: string;
+  visible_to_vcs: boolean;
+  can_manage_visibility: boolean;
+}> {
+  return request<{
+    deck_id: string;
+    visible_to_vcs: boolean;
+    can_manage_visibility: boolean;
+  }>(`/api/decks/${deckId}/visibility`, {
+    method: "PATCH",
+    body: JSON.stringify({ visible_to_vcs: visibleToVcs }),
   });
 }
 

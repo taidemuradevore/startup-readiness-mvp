@@ -180,6 +180,14 @@ class SQLDatabase():
             '''
         )
 
+    def _ensure_deck_visibility_column(self, cur) -> None:
+        cur.execute(
+            '''
+            ALTER TABLE DECK
+            ADD COLUMN IF NOT EXISTS visible_to_vcs BOOLEAN NOT NULL DEFAULT FALSE
+            '''
+        )
+
     def _ensure_score_detail_columns(self, cur) -> None:
         cur.execute(
             '''
@@ -199,6 +207,158 @@ class SQLDatabase():
             ADD COLUMN IF NOT EXISTS evidence TEXT
             '''
         )
+
+    def _ensure_user_profile_table(self, cur) -> None:
+        cur.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS USER_PROFILE (
+                user_id UUID PRIMARY KEY,
+                profile_type TEXT NOT NULL CHECK (profile_type IN ('startup', 'vc')),
+                organization_name TEXT NOT NULL,
+                website TEXT NOT NULL,
+                role_title TEXT NOT NULL,
+                sector_focus TEXT NOT NULL,
+                geography TEXT NOT NULL,
+                description TEXT NOT NULL,
+                startup_stage TEXT,
+                fund_stage_focus TEXT,
+                check_size_range TEXT,
+                fundraising_status TEXT,
+                target_raise TEXT,
+                traction_summary TEXT,
+                notes TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            '''
+        )
+
+    def retrieve_user_profile(self, conn, user_id: str):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_user_profile_table(cur)
+        cur.execute(
+            '''
+            SELECT
+                user_id,
+                profile_type,
+                organization_name,
+                website,
+                role_title,
+                sector_focus,
+                geography,
+                description,
+                startup_stage,
+                fund_stage_focus,
+                check_size_range,
+                fundraising_status,
+                target_raise,
+                traction_summary,
+                notes,
+                created_at,
+                updated_at
+            FROM USER_PROFILE
+            WHERE user_id = %s
+            ''',
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def get_user_profile_type(self, conn, user_id: str) -> str | None:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_user_profile_table(cur)
+        cur.execute(
+            '''
+            SELECT profile_type
+            FROM USER_PROFILE
+            WHERE user_id = %s
+            ''',
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return row["profile_type"] if row else None
+
+    def upsert_user_profile(self, conn, user_id: str, profile: dict):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_user_profile_table(cur)
+        cur.execute(
+            '''
+            INSERT INTO USER_PROFILE (
+                user_id,
+                profile_type,
+                organization_name,
+                website,
+                role_title,
+                sector_focus,
+                geography,
+                description,
+                startup_stage,
+                fund_stage_focus,
+                check_size_range,
+                fundraising_status,
+                target_raise,
+                traction_summary,
+                notes
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET
+                profile_type = EXCLUDED.profile_type,
+                organization_name = EXCLUDED.organization_name,
+                website = EXCLUDED.website,
+                role_title = EXCLUDED.role_title,
+                sector_focus = EXCLUDED.sector_focus,
+                geography = EXCLUDED.geography,
+                description = EXCLUDED.description,
+                startup_stage = EXCLUDED.startup_stage,
+                fund_stage_focus = EXCLUDED.fund_stage_focus,
+                check_size_range = EXCLUDED.check_size_range,
+                fundraising_status = EXCLUDED.fundraising_status,
+                target_raise = EXCLUDED.target_raise,
+                traction_summary = EXCLUDED.traction_summary,
+                notes = EXCLUDED.notes,
+                updated_at = NOW()
+            RETURNING
+                user_id,
+                profile_type,
+                organization_name,
+                website,
+                role_title,
+                sector_focus,
+                geography,
+                description,
+                startup_stage,
+                fund_stage_focus,
+                check_size_range,
+                fundraising_status,
+                target_raise,
+                traction_summary,
+                notes,
+                created_at,
+                updated_at
+            ''',
+            (
+                user_id,
+                profile["profile_type"],
+                profile["organization_name"],
+                profile["website"],
+                profile["role_title"],
+                profile["sector_focus"],
+                profile["geography"],
+                profile["description"],
+                profile.get("startup_stage"),
+                profile.get("fund_stage_focus"),
+                profile.get("check_size_range"),
+                profile.get("fundraising_status"),
+                profile.get("target_raise"),
+                profile.get("traction_summary"),
+                profile.get("notes"),
+            ),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row)
 
     def _build_score_summary(self, conn, deck_id: str):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -267,6 +427,7 @@ class SQLDatabase():
         eval_included: bool = False,
         storage_object_path: str | None = None,
         owner_id: str | None = None,
+        visible_to_vcs: bool = False,
     ):
         cur = conn.cursor()
         deck = evaluation.deck if isinstance(evaluation, PitchDeckEvaluation) else evaluation
@@ -281,11 +442,12 @@ class SQLDatabase():
         deck_id = self._make_deck_id(deck, owner_id)
         self._ensure_deck_storage_path_column(cur)
         self._ensure_deck_owner_column(cur)
+        self._ensure_deck_visibility_column(cur)
 
         cur.execute(
             '''
-            INSERT INTO DECK (deck_id, company_name, sector, stage, team, storage_object_path, owner_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO DECK (deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ''',
             (
                 deck_id,
@@ -295,6 +457,7 @@ class SQLDatabase():
                 json.dumps(deck.team, ensure_ascii=False),
                 storage_object_path,
                 owner_id,
+                visible_to_vcs,
             )
         )
 
@@ -366,8 +529,9 @@ class SQLDatabase():
             )
         conn.commit()
     
-    def retrieve_deck(self, conn, deck_id, owner_id: str, is_admin : bool):
+    def retrieve_deck(self, conn, deck_id, owner_id: str, is_admin : bool, viewer_is_vc: bool = False):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_deck_visibility_column(cur)
         if is_admin:
             cur.execute(
                 '''
@@ -384,9 +548,10 @@ class SQLDatabase():
                 '''
                 SELECT deck_id, company_name, sector, stage, team, storage_object_path
                 FROM DECK
-                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                WHERE deck_id = %s
+                AND (owner_id = %s OR owner_id IS NULL OR (%s AND visible_to_vcs = TRUE))
                 ''',
-                (deck_id, owner_id),
+                (deck_id, owner_id, viewer_is_vc),
             )
             deck_row = cur.fetchone()
 
@@ -436,13 +601,14 @@ class SQLDatabase():
             slides=slides,
         )
 
-    def list_decks(self, conn, owner_id: str, is_admin : bool):
+    def list_decks(self, conn, owner_id: str, is_admin : bool, viewer_is_vc: bool = False):
         cur : psycopg2.extras.RealDictCursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         self._ensure_deck_owner_column(cur)
+        self._ensure_deck_visibility_column(cur)
         if is_admin:
             cur.execute(
                 '''
-                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs
                 FROM DECK
                 ORDER BY company_name ASC
                 LIMIT 10
@@ -452,19 +618,19 @@ class SQLDatabase():
         else:
             cur.execute(
                 '''
-                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs
                 FROM DECK
-                WHERE owner_id = %s
+                WHERE owner_id = %s OR (%s AND visible_to_vcs = TRUE)
                 ORDER BY company_name ASC
                 ''',
-                (owner_id,),
+                (owner_id, viewer_is_vc),
             )
             rows = cur.fetchall()
 
         if not rows and not is_admin:
             cur.execute(
                 '''
-                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs
                 FROM DECK
                 WHERE owner_id IS NULL
                 ORDER BY company_name ASC
@@ -492,17 +658,20 @@ class SQLDatabase():
                     "stage": row["stage"] or "",
                     "team": _parse_json_list(row["team"], []),
                     "storage_object_path": row.get("storage_object_path"),
+                    "visible_to_vcs": bool(row.get("visible_to_vcs")),
+                    "can_manage_visibility": bool(str(row.get("owner_id")) == owner_id or is_admin),
                     "score_summary": self._build_score_summary(conn, row["deck_id"]),
                 }
             )
         return decks
 
-    def retrieve_deck_metadata(self, conn, deck_id, owner_id: str, is_admin : bool):
+    def retrieve_deck_metadata(self, conn, deck_id, owner_id: str, is_admin : bool, viewer_is_vc: bool = False):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_deck_visibility_column(cur)
         if is_admin:
             cur.execute(
                 '''
-                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs
                 FROM DECK
                 WHERE deck_id = %s
                 ''',
@@ -513,11 +682,12 @@ class SQLDatabase():
             self._ensure_deck_owner_column(cur)
             cur.execute(
                 '''
-                SELECT deck_id, company_name, sector, stage, team, storage_object_path
+                SELECT deck_id, company_name, sector, stage, team, storage_object_path, owner_id, visible_to_vcs
                 FROM DECK
-                WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                WHERE deck_id = %s
+                AND (owner_id = %s OR owner_id IS NULL OR (%s AND visible_to_vcs = TRUE))
                 ''',
-                (deck_id, owner_id),
+                (deck_id, owner_id, viewer_is_vc),
             )
             row = cur.fetchone()
         if row is None:
@@ -541,11 +711,14 @@ class SQLDatabase():
             "stage": row["stage"] or "",
             "team": _parse_json_list(row["team"], []),
             "storage_object_path": row.get("storage_object_path"),
+            "visible_to_vcs": bool(row.get("visible_to_vcs")),
+            "can_manage_visibility": bool(str(row.get("owner_id")) == owner_id or is_admin),
             "score_summary": self._build_score_summary(conn, deck_id),
         }
 
-    def retrieve_slides(self, conn, deck_id, owner_id: str, is_admin : bool):
+    def retrieve_slides(self, conn, deck_id, owner_id: str, is_admin : bool, viewer_is_vc: bool = False):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_deck_visibility_column(cur)
         if is_admin:
             cur.execute(
                 '''
@@ -566,10 +739,10 @@ class SQLDatabase():
                 FROM SLIDE
                 JOIN DECK ON DECK.deck_id = SLIDE.deck_id
                 WHERE SLIDE.deck_id = %s
-                AND (DECK.owner_id = %s OR DECK.owner_id IS NULL)
+                AND (DECK.owner_id = %s OR DECK.owner_id IS NULL OR (%s AND DECK.visible_to_vcs = TRUE))
                 ORDER BY slide_number
                 ''',
-                (deck_id, owner_id),
+                (deck_id, owner_id, viewer_is_vc),
             )
             rows = cur.fetchall()
         if not rows:
@@ -588,9 +761,10 @@ class SQLDatabase():
                     '''
                     SELECT 1
                     FROM DECK
-                    WHERE deck_id = %s AND (owner_id = %s OR owner_id IS NULL)
+                    WHERE deck_id = %s
+                    AND (owner_id = %s OR owner_id IS NULL OR (%s AND visible_to_vcs = TRUE))
                     ''',
-                    (deck_id, owner_id),
+                    (deck_id, owner_id, viewer_is_vc),
                 )
                 deck_exists = cur.fetchone()
             if deck_exists is None:
@@ -618,6 +792,40 @@ class SQLDatabase():
                 }
             )
         return slides
+
+    def update_deck_visibility(self, conn, deck_id: str, owner_id: str, visible_to_vcs: bool, is_admin: bool = False):
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        self._ensure_deck_owner_column(cur)
+        self._ensure_deck_visibility_column(cur)
+        if is_admin:
+            cur.execute(
+                '''
+                UPDATE DECK
+                SET visible_to_vcs = %s
+                WHERE deck_id = %s
+                RETURNING deck_id, owner_id, visible_to_vcs
+                ''',
+                (visible_to_vcs, deck_id),
+            )
+        else:
+            cur.execute(
+                '''
+                UPDATE DECK
+                SET visible_to_vcs = %s
+                WHERE deck_id = %s AND owner_id = %s
+                RETURNING deck_id, owner_id, visible_to_vcs
+                ''',
+                (visible_to_vcs, deck_id, owner_id),
+            )
+        row = cur.fetchone()
+        if row is None:
+            raise ValueError(f"No deck found for deck_id={deck_id}")
+        conn.commit()
+        return {
+            "deck_id": row["deck_id"],
+            "visible_to_vcs": bool(row["visible_to_vcs"]),
+            "can_manage_visibility": bool(str(row.get("owner_id")) == owner_id or is_admin),
+        }
 
     def delete_deck(self, conn, deck_id: str, owner_id: str, is_admin: bool = False):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

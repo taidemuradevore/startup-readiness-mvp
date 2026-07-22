@@ -39,13 +39,14 @@ export function DeckUploadWidget() {
         action={(formData) => {
           startTransition(async () => {
             const evalFlag = String(formData.get("eval") ?? "true") === "true";
+            const visibleToVcs = formData.get("visible_to_vcs") === "on";
             if (!selectedPdf) {
               setUploadState({ status: "error", message: "Select or drop a PDF file." });
               return;
             }
 
             try {
-              const payload = await evaluateDeckUpload(selectedPdf, evalFlag);
+              const payload = await evaluateDeckUpload(selectedPdf, evalFlag, visibleToVcs);
               setUploadState({ status: "success", payload });
               setSelectedPdf(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
@@ -119,6 +120,17 @@ export function DeckUploadWidget() {
             <option value="true">Full evaluation</option>
             <option value="false">Deck extraction only</option>
           </select>
+
+          <label className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              name="visible_to_vcs"
+              className="mt-0.5 h-4 w-4 accent-white"
+            />
+            <span>
+              Make this deck visible to VC profiles
+            </span>
+          </label>
 
           <button
             type="submit"
