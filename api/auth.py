@@ -74,6 +74,20 @@ def get_is_admin(user_id: str) -> bool:
 
     return _coerce_bool(response.data)
 
+
+def _metadata_marks_admin(metadata) -> bool:
+    if not isinstance(metadata, dict):
+        return False
+    for key in ("is_admin", "admin"):
+        if _coerce_bool(metadata.get(key)):
+            return True
+    roles = metadata.get("roles") or metadata.get("role")
+    if isinstance(roles, str):
+        return roles.lower() == "admin"
+    if isinstance(roles, list):
+        return any(str(role).lower() == "admin" for role in roles)
+    return False
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> AuthenticatedUser:
@@ -91,7 +105,11 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
 
-    is_admin = get_is_admin(user_id)
+    is_admin = (
+        get_is_admin(user_id)
+        or _metadata_marks_admin(getattr(user, "app_metadata", None))
+        or _metadata_marks_admin(getattr(user, "user_metadata", None))
+    )
 
     return AuthenticatedUser(
         id=user_id,

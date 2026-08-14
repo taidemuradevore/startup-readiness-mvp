@@ -2,9 +2,16 @@
   "name": "startup-readiness",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.11.1",
+  "engines": {
+    "node": ">=20.9.0 <26"
+  },
   "scripts": {
+    "predev": "node scripts/verify-native-bindings.mjs",
     "dev": "next dev --webpack",
+    "prebuild": "node scripts/verify-native-bindings.mjs",
     "build": "next build --webpack",
+    "prestart": "node scripts/verify-native-bindings.mjs",
     "start": "next start",
     "lint": "eslint"
   },
@@ -23,11 +30,12 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "lightningcss": "^1.32.0",
+    "lightningcss": "^1.33.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "optionalDependencies": {
-    "lightningcss-darwin-arm64": "^1.32.0"
+    "lightningcss-darwin-arm64": "^1.33.0",
+    "lightningcss-darwin-x64": "^1.33.0"
   }
 }

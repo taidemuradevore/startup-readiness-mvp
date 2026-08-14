@@ -2,6 +2,7 @@ import io
 import os
 from typing import Literal
 
+from google import genai
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -75,6 +76,55 @@ app.add_middleware(
     allow_headers=["*"],
 )
 db = SQLDatabase()
+_embedding_client = None
+
+
+def _get_embedding_model() -> str:
+    return os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+
+
+def _get_embedding_client():
+    global _embedding_client
+    if _embedding_client is None:
+        _embedding_client = genai.Client()
+    return _embedding_client
+
+
+def _extract_embedding_values(response) -> list[float]:
+    embeddings = getattr(response, "embeddings", None)
+    if embeddings:
+        values = getattr(embeddings[0], "values", None)
+        if values is not None:
+            return [float(value) for value in values]
+
+    embedding = getattr(response, "embedding", None)
+    if embedding is not None:
+        values = getattr(embedding, "values", None)
+        if values is not None:
+            return [float(value) for value in values]
+
+    if isinstance(response, dict):
+        embeddings = response.get("embeddings")
+        if embeddings:
+            values = embeddings[0].get("values") or embeddings[0].get("embedding")
+            if values is not None:
+                return [float(value) for value in values]
+
+    raise ValueError("Gemini embedding response did not include embedding values.")
+
+
+def _embed_text(text: str) -> list[float]:
+    if not text.strip():
+        raise ValueError("Cannot embed empty text.")
+    response = _get_embedding_client().models.embed_content(
+        model=_get_embedding_model(),
+        contents=text,
+        config={"output_dimensionality": 768},
+    )
+    values = _extract_embedding_values(response)
+    if len(values) != 768:
+        raise ValueError(f"Expected 768 embedding dimensions, got {len(values)}.")
+    return values
 
 
 def _get_storage_client() -> SupabaseStorageClient:
@@ -172,6 +222,13 @@ def _validated_profile_payload(profile: UserProfileRequest) -> dict:
 def _current_user_is_vc(conn, user_id: str) -> bool:
     return db.get_user_profile_type(conn, user_id) == "vc"
 
+
+def _maybe_embed_deck_facets(conn, deck_id: str) -> None:
+    try:
+        db.upsert_deck_embedding_facets(conn, deck_id, _embed_text, _get_embedding_model())
+    except Exception as exc:
+        print("deck_embedding_failed", {"deck_id": deck_id, "error": str(exc)})
+
 @app.get("/api/health")
 def return_health():
     return {"status" : "healthy"}
@@ -211,8 +268,22 @@ def list_decks_endpoint(current_user: AuthenticatedUser = Depends(get_current_us
     try:
         conn = db.connect()
         try:
-            viewer_is_vc = _current_user_is_vc(conn, current_user.id)
-            decks = db.list_decks(conn, current_user.id, current_user.is_admin, viewer_is_vc)
+            profile = db.retrieve_user_profile(conn, current_user.id)
+            viewer_is_vc = profile is not None and profile.get("profile_type") == "vc"
+            if viewer_is_vc:
+                lazy_limit = int(os.getenv("EMBEDDING_LAZY_BACKFILL_LIMIT", "3"))
+                db.ensure_visible_deck_embedding_facets(conn, _embed_text, _get_embedding_model(), lazy_limit)
+                query_text = db.build_vc_query_text(profile)
+                query_embedding = _embed_text(query_text)
+                decks = db.list_decks_ranked_for_vc(
+                    conn,
+                    current_user.id,
+                    current_user.is_admin,
+                    profile,
+                    query_embedding,
+                )
+            else:
+                decks = db.list_decks(conn, current_user.id, current_user.is_admin, viewer_is_vc)
             print(
                 "list_decks",
                 {"user_id": current_user.id, "deck_ids": [deck.get("deck_id") for deck in decks], "is_admin" : current_user.is_admin},
@@ -287,13 +358,16 @@ def update_deck_visibility_endpoint(
     try:
         conn = db.connect()
         try:
-            return db.update_deck_visibility(
+            result = db.update_deck_visibility(
                 conn,
                 deck_id,
                 current_user.id,
                 request.visible_to_vcs,
                 current_user.is_admin,
             )
+            if request.visible_to_vcs:
+                _maybe_embed_deck_facets(conn, deck_id)
+            return result
         finally:
             conn.close()
     except ValueError as exc:
@@ -409,6 +483,12 @@ async def evaluate_deck_upload_endpoint(
             owner_id=current_user.id,
             visible_to_vcs=visible_to_vcs,
         )
+        if visible_to_vcs and deck.deck is not None:
+            embedding_conn = db.connect()
+            try:
+                _maybe_embed_deck_facets(embedding_conn, db._make_deck_id(deck.deck, current_user.id))
+            finally:
+                embedding_conn.close()
         print("evaluate_upload:ingested", {"user_id": current_user.id})
         return deck
     except HTTPException:

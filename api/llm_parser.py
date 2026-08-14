@@ -1,9 +1,13 @@
 import unittest
 
 from google import genai
+import html
 import json
 import os
-from typing import Optional, List, Union
+import re
+import urllib.parse
+import urllib.request
+from typing import Optional, List, Union, Literal
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -14,7 +18,7 @@ class GradedSection(BaseModel):
     is_present: bool = Field(
         description="True if this topic is addressed anywhere in the deck. False if completely missing."
     )
-    score: Optional[Union[int, str]] = Field(
+    score: Optional[Union[int, float, str]] = Field(
         default=None, 
         description="Grade based on the prompt rubric. Null if is_present is False."
     )
@@ -25,6 +29,32 @@ class GradedSection(BaseModel):
     evidence: Optional[str] = Field(
         default=None, 
         description="A verbatim quote or specific slide reference that justifies the score. Null if is_present is False."
+    )
+    confidence: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Evaluator confidence from 0 to 1, based on evidence quality and verifiability."
+    )
+    adjusted_score: Optional[float] = Field(
+        default=None,
+        description="Confidence-adjusted score on the same point scale as score."
+    )
+    confidence_reason: Optional[str] = Field(
+        default=None,
+        description="Short reason for the confidence value."
+    )
+    verification_status: Optional[str] = Field(
+        default=None,
+        description="External verification status for claims that affected this rubric section."
+    )
+    critic_notes: Optional[str] = Field(
+        default=None,
+        description="Critic pass notes explaining score or confidence revisions."
+    )
+    external_checks: list["ExternalCheckResult"] = Field(
+        default_factory=list,
+        description="External checks used to validate claims relevant to this section."
     )
 
 
@@ -101,6 +131,426 @@ class PitchDeckEvaluation(BaseModel):
         default=None,
         description="Overall letter grade (A+, A, B, C, D, F) based on the sum of the parts."
     )
+
+
+class ExternalCheckResult(BaseModel):
+    claim: str = Field(description="The deck claim or query being checked.")
+    source: str = Field(description="Verifier source, such as web_search or internal.")
+    status: Literal["verified", "unverified", "contradicted", "unavailable"] = Field(
+        description="Verification outcome."
+    )
+    summary: str = Field(description="Brief explanation of what was found.")
+    url: Optional[str] = Field(default=None, description="Best source URL, if available.")
+
+
+GradedSection.model_rebuild()
+
+
+class RubricSubagentDraft(BaseModel):
+    is_present: bool
+    score: Optional[Union[int, float, str]] = None
+    feedback: Optional[str] = None
+    evidence: Optional[str] = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    confidence_reason: str
+    requested_external_checks: list[str] = Field(default_factory=list)
+
+
+class RubricCritique(BaseModel):
+    concerns: list[str] = Field(default_factory=list)
+    score_adjustment: Optional[float] = Field(
+        default=None,
+        description="Suggested final numeric score on this section's point scale, if the draft should change."
+    )
+    confidence_adjustment: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Suggested final confidence from 0 to 1, if the draft should change."
+    )
+    needs_external_verification: bool = False
+    external_check_queries: list[str] = Field(default_factory=list)
+    notes: str
+
+
+class RubricFinalGrade(BaseModel):
+    is_present: bool
+    score: Optional[Union[int, float, str]] = None
+    adjusted_score: Optional[float] = None
+    feedback: Optional[str] = None
+    evidence: Optional[str] = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    confidence_reason: str
+    verification_status: Literal["verified", "unverified", "contradicted", "unavailable", "not_needed"]
+    critic_notes: str
+    external_checks: list[ExternalCheckResult] = Field(default_factory=list)
+
+
+class EvaluationExtras(BaseModel):
+    extracted_kpis: list[KPIMetric] = Field(default_factory=list)
+    red_flags: list[str] = Field(default_factory=list)
+    final_grade: Optional[str] = None
+
+
+RUBRIC_SECTIONS = [
+    {
+        "attr": "s1_problem",
+        "title": "Problem",
+        "max_points": 20,
+        "rubric": "Grade whether the problem is acute, clearly defined, quantified, and validated by customer pain.",
+    },
+    {
+        "attr": "s2_solution",
+        "title": "Solution",
+        "max_points": 20,
+        "rubric": "Grade whether the solution directly solves the problem, is clear, differentiated, and defensible.",
+    },
+    {
+        "attr": "s3_market_size",
+        "title": "Market Size",
+        "max_points": 10,
+        "rubric": "Grade TAM/SAM/SOM logic, market growth, and credibility of sources.",
+    },
+    {
+        "attr": "s4_product_and_tech",
+        "title": "Product & Tech",
+        "max_points": 5,
+        "rubric": "Grade the product depth, technical magic, IP, proprietary data, and feasibility. This section is capped at 5 so team credibility carries more weight.",
+    },
+    {
+        "attr": "s5_business_model",
+        "title": "Business Model",
+        "max_points": 10,
+        "rubric": "Grade revenue model clarity, pricing, margin logic, unit economics, and scalability.",
+    },
+    {
+        "attr": "s6_go_to_market",
+        "title": "Go-To-Market",
+        "max_points": 10,
+        "rubric": "Grade first customer acquisition strategy, wedge, channels, partnerships, and distribution advantage.",
+    },
+    {
+        "attr": "s7_competition",
+        "title": "Competition",
+        "max_points": 5,
+        "rubric": "Grade competitor awareness, specific rivals, differentiation, and defensibility against incumbents.",
+    },
+    {
+        "attr": "s8_team",
+        "title": "Team",
+        "max_points": 20,
+        "rubric": "Grade founder-market fit, domain expertise, operating credibility, technical/GTM coverage, prior execution, advisors, and claim verifiability. Be strict: team quality and credibility are a core investment driver.",
+    },
+    {
+        "attr": "s9_traction_and_kpis",
+        "title": "Traction & KPIs",
+        "max_points": 5,
+        "rubric": "Grade revenue, pilots, retention, usage growth, LOIs, KPI relevance, and trajectory.",
+    },
+    {
+        "attr": "s10_the_ask_and_financials",
+        "title": "The Ask & Financials",
+        "max_points": 5,
+        "rubric": "Grade whether raise amount, use of funds, milestones, and projections are explicit and realistic.",
+    },
+]
+
+
+class ExternalVerifier:
+    """Best-effort verifier with a pluggable interface and public web fallback."""
+
+    def verify_team_and_company(self, deck: Deck) -> list[ExternalCheckResult]:
+        claims = []
+        if deck.company:
+            claims.append(f"{deck.company} startup company")
+        for team_member in deck.team:
+            if team_member:
+                claims.append(f"{team_member} {deck.company} founder background")
+        return self.verify_claims(claims)
+
+    def verify_claims(self, claims: list[str]) -> list[ExternalCheckResult]:
+        results = []
+        seen = set()
+        for claim in claims:
+            normalized_claim = re.sub(r"\s+", " ", str(claim)).strip()
+            if not normalized_claim or normalized_claim.lower() in seen:
+                continue
+            seen.add(normalized_claim.lower())
+            results.append(self._verify_with_web_search(normalized_claim))
+            if len(results) >= 8:
+                break
+        return results
+
+    def _verify_with_web_search(self, claim: str) -> ExternalCheckResult:
+        query = urllib.parse.urlencode({"q": claim})
+        url = f"https://duckduckgo.com/html/?{query}"
+        request = urllib.request.Request(
+            url,
+            headers={"User-Agent": "startup-readiness-verifier/1.0"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                body = response.read(120000).decode("utf-8", errors="ignore")
+        except Exception as exc:
+            return ExternalCheckResult(
+                claim=claim,
+                source="web_search",
+                status="unavailable",
+                summary=f"External web search unavailable: {exc}",
+                url=None,
+            )
+
+        text = html.unescape(re.sub(r"<[^>]+>", " ", body))
+        normalized_text = re.sub(r"\s+", " ", text).strip()
+        tokens = [token.lower() for token in re.findall(r"[A-Za-z0-9]+", claim) if len(token) > 2]
+        hits = sum(1 for token in tokens if token in normalized_text.lower())
+        first_link = self._first_result_url(body)
+        status = "verified" if tokens and hits >= max(2, len(tokens) // 2) else "unverified"
+        summary = normalized_text[:320] if normalized_text else "Search returned no usable text."
+        return ExternalCheckResult(
+            claim=claim,
+            source="web_search",
+            status=status,
+            summary=summary,
+            url=first_link,
+        )
+
+    def _first_result_url(self, body: str) -> Optional[str]:
+        match = re.search(r'class="result__a" href="([^"]+)"', body)
+        if not match:
+            return None
+        href = html.unescape(match.group(1))
+        parsed = urllib.parse.urlparse(href)
+        if parsed.query:
+            query = urllib.parse.parse_qs(parsed.query)
+            uddg = query.get("uddg")
+            if uddg:
+                return uddg[0]
+        return href
+
+
+class DeckEvaluationOrchestrator:
+    def __init__(self, client):
+        self.client = client
+        self.verifier = ExternalVerifier()
+
+    def evaluate_uploaded_file(self, uploaded_file) -> PitchDeckEvaluation:
+        deck = self._extract_deck(uploaded_file)
+        mandatory_checks = self.verifier.verify_team_and_company(deck)
+        final_sections: dict[str, GradedSection] = {}
+
+        for section in RUBRIC_SECTIONS:
+            checks = list(mandatory_checks) if section["attr"] == "s8_team" else []
+            draft = self._run_subagent(uploaded_file, deck, section, checks)
+            requested_checks = self.verifier.verify_claims(draft.requested_external_checks)
+            checks.extend(requested_checks)
+            critique = self._run_critic(uploaded_file, deck, section, draft, checks)
+            if critique.needs_external_verification:
+                checks.extend(self.verifier.verify_claims(critique.external_check_queries))
+            final_grade = self._run_final_grader(uploaded_file, deck, section, draft, critique, checks)
+            final_sections[section["attr"]] = self._section_from_final(section, final_grade)
+
+        extras = self._extract_extras(uploaded_file, deck, final_sections)
+        return PitchDeckEvaluation(
+            deck=deck,
+            extracted_kpis=extras.extracted_kpis,
+            red_flags=extras.red_flags,
+            final_grade=extras.final_grade,
+            **final_sections,
+        )
+
+    def _extract_deck(self, uploaded_file) -> Deck:
+        prompt = """
+        Extract structured deck metadata and slide text from this startup pitch deck.
+        Include every slide you can read. Infer missing top-level metadata conservatively.
+        """
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[uploaded_file, prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": Deck,
+                "temperature": 0.0,
+            },
+        )
+        return Deck.model_validate(response.parsed)
+
+    def _run_subagent(
+        self,
+        uploaded_file,
+        deck: Deck,
+        section: dict,
+        external_checks: list[ExternalCheckResult],
+    ) -> RubricSubagentDraft:
+        prompt = f"""
+        You are the specialist subagent for the rubric item: {section['title']}.
+        Max points: {section['max_points']}.
+        Rubric: {section['rubric']}
+
+        Deck metadata:
+        {deck.model_dump_json()}
+
+        External checks available:
+        {json.dumps([check.model_dump(mode="json") for check in external_checks], ensure_ascii=False)}
+
+        Return a structured draft grade only for this rubric item. Use direct deck evidence.
+        Confidence must reflect evidence quality and verifiability. If you need external checks for non-team claims,
+        list concise search queries in requested_external_checks.
+        """
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[uploaded_file, prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": RubricSubagentDraft,
+                "temperature": 0.0,
+            },
+        )
+        return RubricSubagentDraft.model_validate(response.parsed)
+
+    def _run_critic(
+        self,
+        uploaded_file,
+        deck: Deck,
+        section: dict,
+        draft: RubricSubagentDraft,
+        external_checks: list[ExternalCheckResult],
+    ) -> RubricCritique:
+        prompt = f"""
+        You are the critic for a VC deck evaluation subagent.
+        Rubric item: {section['title']} / {section['max_points']} points.
+        Rubric: {section['rubric']}
+
+        Draft:
+        {draft.model_dump_json()}
+
+        Deck metadata:
+        {deck.model_dump_json()}
+
+        External checks:
+        {json.dumps([check.model_dump(mode="json") for check in external_checks], ensure_ascii=False)}
+
+        Find overclaims, missing deck evidence, score inflation, and confidence problems.
+        Return exactly one critique pass. For Team, be especially strict about credibility and founder-market fit.
+        """
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[uploaded_file, prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": RubricCritique,
+                "temperature": 0.0,
+            },
+        )
+        return RubricCritique.model_validate(response.parsed)
+
+    def _run_final_grader(
+        self,
+        uploaded_file,
+        deck: Deck,
+        section: dict,
+        draft: RubricSubagentDraft,
+        critique: RubricCritique,
+        external_checks: list[ExternalCheckResult],
+    ) -> RubricFinalGrade:
+        prompt = f"""
+        Produce the final structured grade for {section['title']}.
+        Max points: {section['max_points']}.
+        Rubric: {section['rubric']}
+
+        Draft:
+        {draft.model_dump_json()}
+
+        Critique:
+        {critique.model_dump_json()}
+
+        Deck metadata:
+        {deck.model_dump_json()}
+
+        External checks:
+        {json.dumps([check.model_dump(mode="json") for check in external_checks], ensure_ascii=False)}
+
+        Rules:
+        - Clamp score between 0 and {section['max_points']}.
+        - Confidence is 0 to 1 and should fall when evidence is thin or external checks are unavailable.
+        - adjusted_score is score * confidence, rounded to one decimal.
+        - Do not give credit for facts absent from the deck, except verified credibility can affect confidence.
+        - For Team, value quality and credibility highly, and penalize unverifiable exceptional claims softly.
+        """
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[uploaded_file, prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": RubricFinalGrade,
+                "temperature": 0.0,
+            },
+        )
+        return RubricFinalGrade.model_validate(response.parsed)
+
+    def _extract_extras(
+        self,
+        uploaded_file,
+        deck: Deck,
+        sections: dict[str, GradedSection],
+    ) -> EvaluationExtras:
+        prompt = f"""
+        Extract hard KPIs, red flags, and an overall letter grade from this pitch deck and the structured rubric results.
+
+        Deck metadata:
+        {deck.model_dump_json()}
+
+        Rubric results:
+        {json.dumps({key: value.model_dump(mode="json") for key, value in sections.items()}, ensure_ascii=False)}
+
+        Red flags should focus on investor-relevant risks, including team credibility gaps, unverifiable claims,
+        missing business model, weak GTM, weak traction, unrealistic market sizing, and unsupported technical moats.
+        """
+        response = self.client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[uploaded_file, prompt],
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": EvaluationExtras,
+                "temperature": 0.0,
+            },
+        )
+        return EvaluationExtras.model_validate(response.parsed)
+
+    def _section_from_final(self, section: dict, final_grade: RubricFinalGrade) -> GradedSection:
+        raw_score = self._coerce_score(final_grade.score)
+        confidence = self._clamp(final_grade.confidence, 0.0, 1.0)
+        if raw_score is not None:
+            raw_score = self._clamp(raw_score, 0.0, float(section["max_points"]))
+        adjusted_score = final_grade.adjusted_score
+        if adjusted_score is None and raw_score is not None:
+            adjusted_score = round(raw_score * confidence, 1)
+        if adjusted_score is not None:
+            adjusted_score = round(self._clamp(float(adjusted_score), 0.0, float(section["max_points"])), 1)
+
+        return GradedSection(
+            is_present=final_grade.is_present,
+            score=round(raw_score, 1) if raw_score is not None else final_grade.score,
+            feedback=final_grade.feedback,
+            evidence=final_grade.evidence,
+            confidence=round(confidence, 2),
+            adjusted_score=adjusted_score,
+            confidence_reason=final_grade.confidence_reason,
+            verification_status=final_grade.verification_status,
+            critic_notes=final_grade.critic_notes,
+            external_checks=final_grade.external_checks,
+        )
+
+    def _coerce_score(self, value) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        match = re.search(r"-?\d+(?:\.\d+)?", str(value))
+        return float(match.group(0)) if match else None
+
+    def _clamp(self, value: float, low: float, high: float) -> float:
+        return min(high, max(low, value))
 
 
 # ==================== DECK PARSER CLASS ====================
@@ -313,6 +763,18 @@ class DeckParser:
         """
 
     def _evaluate_uploaded_file(self, uploaded_file) -> PitchDeckEvaluation:
+        try:
+            if os.getenv("USE_ORCHESTRATED_EVALUATOR", "true").lower() != "false":
+                print("Evaluating deck with orchestrated rubric subagents...")
+                return DeckEvaluationOrchestrator(self.client).evaluate_uploaded_file(uploaded_file)
+            return self._legacy_evaluate_uploaded_file(uploaded_file)
+        finally:
+            if uploaded_file.name is not None:
+                self.client.files.delete(name=uploaded_file.name)
+            else:
+                print("Skipping cleanup: uploaded file has no server-side name.")
+
+    def _legacy_evaluate_uploaded_file(self, uploaded_file) -> PitchDeckEvaluation:
         prompt = self._evaluation_prompt()
 
         print("Evaluating deck...")
@@ -327,13 +789,6 @@ class DeckParser:
                 "temperature": 0.0 
             }
         )
-        
-        # Clean up the file from Google's servers
-        if uploaded_file.name is not None:
-            self.client.files.delete(name=uploaded_file.name)
-        else:
-            print("Skipping cleanup: uploaded file has no server-side name.")
-        
         return PitchDeckEvaluation.model_validate(response.parsed)
 
     def extract_deck(self, pdf_path: str) -> Deck:

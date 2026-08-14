@@ -37,6 +37,7 @@ export default async function HomePage() {
   } catch {
     shouldAutoOpenProfile = false;
   }
+  const isVcProfile = profile?.profile_type === "vc";
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f5f7fb_0%,#eef2ff_38%,#f8fafc_100%)] px-6 py-10">
@@ -78,8 +79,14 @@ export default async function HomePage() {
         <section className="mt-10">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Deck gallery</h2>
-              <p className="mt-1 text-sm text-slate-600">Full-document previews with the latest stored evaluation summary.</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+                {isVcProfile ? "Top deck matches" : "Deck gallery"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {isVcProfile
+                  ? "VC-visible decks ranked by your thesis, sector focus, stage focus, and deck quality."
+                  : "Full-document previews with the latest stored evaluation summary."}
+              </p>
             </div>
           </div>
 
@@ -115,8 +122,32 @@ export default async function HomePage() {
                         label="VC visibility"
                         value={deck.visible_to_vcs ? "Visible" : "Hidden"}
                       />
+                      {deck.match_score != null ? (
+                        <ScorePill
+                          label="Match"
+                          value={`${deck.match_score}%`}
+                        />
+                      ) : null}
                     </div>
                   </div>
+
+                  {deck.match_reason ? (
+                    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+                      {deck.match_reason}
+                      {deck.matched_facets?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {deck.matched_facets.map((facet) => (
+                            <span
+                              key={`${deck.deck_id}-${facet.facet_type}`}
+                              className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-medium text-blue-800"
+                            >
+                              {facet.facet_title}: {facet.score}%
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   <div className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
                     <div>

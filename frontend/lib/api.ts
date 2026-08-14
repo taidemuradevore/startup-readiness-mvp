@@ -26,8 +26,17 @@ export type DeckSummary = {
   deck_pdf_url?: string | null;
   visible_to_vcs?: boolean;
   can_manage_visibility?: boolean;
+  match_score?: number | null;
+  match_reason?: string | null;
+  matched_facets?: Array<{
+    facet_type: string;
+    facet_title: string;
+    score: number;
+  }>;
   score_summary?: {
     overall_score: number | null;
+    raw_overall_score?: number | null;
+    confidence_adjusted_overall_score?: number | null;
     scored_sections: number;
     red_flag_count: number;
     red_flags: string[];
@@ -37,8 +46,22 @@ export type DeckSummary = {
       raw_score?: string | null;
       feedback?: string | null;
       evidence?: string | null;
+      confidence?: number | null;
+      adjusted_value?: number | null;
+      confidence_reason?: string | null;
+      verification_status?: string | null;
+      critic_notes?: string | null;
+      external_checks?: ExternalCheckResult[];
     }>;
   } | null;
+};
+
+export type ExternalCheckResult = {
+  claim: string;
+  source: string;
+  status: "verified" | "unverified" | "contradicted" | "unavailable";
+  summary: string;
+  url?: string | null;
 };
 
 export type DeckEvaluationSection = {
@@ -46,6 +69,12 @@ export type DeckEvaluationSection = {
   score: number | string | null;
   feedback: string | null;
   evidence: string | null;
+  confidence?: number | null;
+  adjusted_score?: number | null;
+  confidence_reason?: string | null;
+  verification_status?: string | null;
+  critic_notes?: string | null;
+  external_checks?: ExternalCheckResult[];
 };
 
 export type DeckEvaluation = {
@@ -266,6 +295,11 @@ function normalizeDeckSummary(deck: Partial<Deck> & { deck_id?: string }): DeckS
     team: deck.team ?? [],
     storage_object_path: "storage_object_path" in deck ? (deck as DeckSummary).storage_object_path : null,
     deck_pdf_url: "deck_pdf_url" in deck ? (deck as DeckSummary).deck_pdf_url : null,
+    visible_to_vcs: "visible_to_vcs" in deck ? (deck as DeckSummary).visible_to_vcs : false,
+    can_manage_visibility: "can_manage_visibility" in deck ? (deck as DeckSummary).can_manage_visibility : false,
+    match_score: "match_score" in deck ? (deck as DeckSummary).match_score : null,
+    match_reason: "match_reason" in deck ? (deck as DeckSummary).match_reason : null,
+    matched_facets: "matched_facets" in deck ? (deck as DeckSummary).matched_facets : [],
     score_summary: "score_summary" in deck ? (deck as DeckSummary).score_summary : null,
   };
 }

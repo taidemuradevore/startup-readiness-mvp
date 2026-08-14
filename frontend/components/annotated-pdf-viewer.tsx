@@ -15,6 +15,11 @@ type ScoreBreakdownItem = {
   raw_score?: string | null;
   feedback?: string | null;
   evidence?: string | null;
+  confidence?: number | null;
+  adjusted_value?: number | null;
+  confidence_reason?: string | null;
+  verification_status?: string | null;
+  critic_notes?: string | null;
 };
 
 type AnnotatedPdfViewerProps = {
@@ -187,6 +192,19 @@ export function AnnotatedPdfViewer({
                       </div>
                     ) : null}
 
+                    {matchedScore?.confidence != null ? (
+                      <div className="rounded-xl border border-slate-200 bg-white p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Confidence</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                          {Math.round(matchedScore.confidence * 100)}%
+                          {matchedScore.adjusted_value != null ? `, adjusted to ${matchedScore.adjusted_value} pts` : ""}
+                        </p>
+                        {matchedScore.confidence_reason ? (
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{matchedScore.confidence_reason}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     {slide.graph_desc.length ? (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Visual notes</p>
@@ -251,6 +269,22 @@ export function AnnotatedPdfViewer({
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Quoted evidence</p>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{selectedScore.evidence}</p>
+                  </div>
+                ) : null}
+
+                {selectedScore?.confidence != null ? (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Confidence</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {Math.round(selectedScore.confidence * 100)}%
+                      {selectedScore.adjusted_value != null ? `, adjusted to ${selectedScore.adjusted_value} pts` : ""}
+                    </p>
+                    {selectedScore.confidence_reason ? (
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{selectedScore.confidence_reason}</p>
+                    ) : null}
+                    {selectedScore.critic_notes ? (
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{selectedScore.critic_notes}</p>
+                    ) : null}
                   </div>
                 ) : null}
 

@@ -54,6 +54,12 @@ export default async function DeckDetailPage({
                 <p className="mt-2 text-4xl font-semibold tracking-tight">
                   {deck.score_summary?.overall_score != null ? deck.score_summary.overall_score : "—"}
                 </p>
+                {deck.score_summary?.raw_overall_score != null &&
+                deck.score_summary.raw_overall_score !== deck.score_summary.overall_score ? (
+                  <p className="mt-1 text-sm text-slate-300">
+                    Raw score: {deck.score_summary.raw_overall_score}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-sm text-slate-300">
                   {deck.score_summary?.scored_sections ?? 0} scored sections
                 </p>
@@ -93,8 +99,50 @@ export default async function DeckDetailPage({
                         {item.value != null ? `${item.value} pts` : item.raw_score || "Not scored"}
                       </span>
                     </div>
+                    {(item.confidence != null || item.adjusted_value != null || item.verification_status) ? (
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+                        {item.confidence != null ? (
+                          <span className="rounded-full bg-white px-3 py-1">
+                            Confidence {Math.round(item.confidence * 100)}%
+                          </span>
+                        ) : null}
+                        {item.adjusted_value != null ? (
+                          <span className="rounded-full bg-white px-3 py-1">
+                            Adjusted {item.adjusted_value} pts
+                          </span>
+                        ) : null}
+                        {item.verification_status ? (
+                          <span className="rounded-full bg-white px-3 py-1">
+                            Verification {item.verification_status.replaceAll("_", " ")}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {item.feedback ? (
                       <p className="mt-3 text-sm leading-7 text-slate-700">{item.feedback}</p>
+                    ) : null}
+                    {item.confidence_reason ? (
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.confidence_reason}</p>
+                    ) : null}
+                    {item.critic_notes ? (
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{item.critic_notes}</p>
+                    ) : null}
+                    {item.external_checks?.length ? (
+                      <div className="mt-3 space-y-2">
+                        {item.external_checks.slice(0, 2).map((check, index) => (
+                          <div key={`${deck.deck_id}-${item.rubric_section}-check-${index}`} className="rounded-xl border border-slate-200 bg-white p-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                              {check.status} via {check.source}
+                            </p>
+                            <p className="mt-1 text-sm leading-6 text-slate-700">{check.claim}</p>
+                            {check.url ? (
+                              <a href={check.url} className="mt-1 block truncate text-sm font-medium text-blue-700 hover:text-blue-900">
+                                {check.url}
+                              </a>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
                     ) : null}
                   </div>
                 ))}
