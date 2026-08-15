@@ -134,7 +134,6 @@ export type ProfilePayload = {
 };
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-const BROWSER_BACKEND_PROXY_PREFIX = "/api/backend";
 const ENABLE_EXAMPLE_DECKS = process.env.NEXT_PUBLIC_ENABLE_EXAMPLE_DECKS === "true";
 
 type RequestOptions = {
@@ -288,11 +287,19 @@ function getRequestUrl(path: string) {
     return `${API_URL}${path}`;
   }
 
-  if (!API_URL || /^https?:\/\//i.test(API_URL)) {
-    return `${BROWSER_BACKEND_PROXY_PREFIX}${path}`;
+  if (!API_URL) {
+    return path;
   }
 
-  return `${API_URL}${path}`;
+  try {
+    const apiUrl = new URL(API_URL, window.location.origin);
+    if (apiUrl.origin === window.location.origin) {
+      return path;
+    }
+    return `${apiUrl.origin}${path}`;
+  } catch {
+    return `${API_URL}${path}`;
+  }
 }
 
 function normalizeDeckSummary(deck: Partial<Deck> & { deck_id?: string }): DeckSummary {
@@ -439,7 +446,7 @@ export async function getDeckDetail(deckId: string, options: RequestOptions = {}
     };
   } catch {
     const fallbackDeck = ENABLE_EXAMPLE_DECKS ? fallbackDecks.find((item) => item.deck_id === deckId) : undefined;
-    if (!fallbackDeck && !slidesResult.slides.length) {
+    if (!fallbackDeck && !slidesResult.slides.length && !isFallbackDeckId(deckId)) {
       throw new ApiError(`Deck ${deckId} could not be loaded.`);
     }
     return {
@@ -457,4 +464,8 @@ export async function getDeckDetail(deckId: string, options: RequestOptions = {}
       isFallback: true,
     };
   }
+}
+
+function isFallbackDeckId(deckId: string) {
+  return deckId.toLowerCase().startsWith("fallback");
 }

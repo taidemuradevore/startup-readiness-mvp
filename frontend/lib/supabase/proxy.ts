@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATH_PREFIXES = ["/auth", "/favicon.ico"];
+const PUBLIC_PATH_PREFIXES = ["/api", "/auth", "/favicon.ico"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATH_PREFIXES.some(
