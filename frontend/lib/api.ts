@@ -134,6 +134,7 @@ export type ProfilePayload = {
 };
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const BROWSER_BACKEND_PROXY_PREFIX = "/api/backend";
 const ENABLE_EXAMPLE_DECKS = process.env.NEXT_PUBLIC_ENABLE_EXAMPLE_DECKS === "true";
 
 type RequestOptions = {
@@ -251,14 +252,14 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
-  if (!API_URL) {
+  if (!API_URL && typeof window === "undefined") {
     throw new ApiError("NEXT_PUBLIC_API_URL is not configured.");
   }
 
   const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
   const accessToken = options.accessToken ?? (await getBrowserSupabaseAccessToken());
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(getRequestUrl(path), {
     ...init,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
@@ -280,6 +281,18 @@ async function request<T>(path: string, init?: RequestInit, options: RequestOpti
   }
 
   return (await response.json()) as T;
+}
+
+function getRequestUrl(path: string) {
+  if (typeof window === "undefined") {
+    return `${API_URL}${path}`;
+  }
+
+  if (!API_URL || /^https?:\/\//i.test(API_URL)) {
+    return `${BROWSER_BACKEND_PROXY_PREFIX}${path}`;
+  }
+
+  return `${API_URL}${path}`;
 }
 
 function normalizeDeckSummary(deck: Partial<Deck> & { deck_id?: string }): DeckSummary {
